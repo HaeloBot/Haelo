@@ -172,6 +172,8 @@ Root Directory `website`. Leave "Include source files outside of the Root Direct
 
 To publish the `$HAELO` address, edit only `website/public/config.json` (`token.ca`, and `buyUrlTemplate` with `{CA}`). Push to `main`. The page fetches that file with `cache: "no-store"`. Leave `ca` empty until you have the address.
 
+The Connect wallet button uses Reown AppKit on Robinhood Chain only (`reown.projectId` in that same file). In the Reown dashboard, allowlist `haelobot.com` and `haelo-delta.vercel.app` or the modal cannot finish a connection on those domains.
+
 </details>
 
 ## Contributing

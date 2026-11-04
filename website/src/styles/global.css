@@ -136,6 +136,38 @@ a:hover { color: white; }
   0% { box-shadow: 0 0 0 0 rgba(204, 255, 0, 0.65); }
   100% { box-shadow: 0 0 0 12px rgba(204, 255, 0, 0); }
 }
+.wallet {
+  border: 1px solid var(--lime);
+  background: transparent;
+  color: var(--lime);
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  position: relative;
+}
+.wallet:disabled { opacity: 0.55; cursor: wait; }
+.wallet-short { display: none; }
+.wallet-chip {
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+.wallet-halo {
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  border: 1px solid rgba(184, 250, 12, 0.75);
+  animation: wallet-halo 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes wallet-halo {
+  0%, 100% { transform: scale(0.96); opacity: 0.25; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
 .x-link {
   width: 36px;
   height: 36px;
@@ -578,7 +610,10 @@ html.shake-up, html.shake-down { animation: shake 0.48s linear; }
   }
   .nav-links.open { display: flex; }
   .menu-btn { display: inline-flex; margin-left: 0; background: transparent; border: 1px solid var(--line); color: var(--lime); border-radius: 999px; padding: 8px 12px; }
-  .sound { margin-left: auto; }
+  .sound { margin-left: 0; }
+  .wallet { margin-left: auto; padding: 8px 10px; }
+  .wallet-long { display: none; }
+  .wallet-short { display: inline; }
   .stage { height: 520vh; }
   .stage-copy { background: linear-gradient(180deg, rgba(5, 6, 5, 0) 20%, rgba(5, 6, 5, 0.92) 70%); justify-content: flex-end; width: 100%; }
   .stage-copy h1 { font-size: clamp(52px, 16vw, 84px); }
@@ -632,7 +667,7 @@ html.shake-up, html.shake-down { animation: shake 0.48s linear; }
 
 @media (prefers-reduced-motion: reduce) {
   .grain { animation: none; }
-  .glitch::before, .glitch::after, .halo-ring, .eq i, html.shake-up, html.shake-down, .sound.waiting, .fx-in { animation: none; }
+  .glitch::before, .glitch::after, .halo-ring, .eq i, html.shake-up, html.shake-down, .sound.waiting, .fx-in, .wallet-halo { animation: none; }
   .card, .btn, .rung { transition: none; }
   .card:hover, .btn:hover, .rung.on { transform: none; }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "react-router-dom";
@@ -6,6 +6,8 @@ import { sound, type SoundState } from "../audio/sound.js";
 import { ImpactLayer } from "./Impact.js";
 import { Kinetic } from "./Kinetic.js";
 import { useSiteConfig } from "./SiteConfig.js";
+
+const WalletButton = lazy(() => import("./WalletButton.js"));
 
 const LINKS = [
   { to: "/", label: "Ladder", end: true },
@@ -116,6 +118,16 @@ export function Chrome(): React.ReactElement {
           ))}
         </nav>
         <div className="nav-spacer" />
+        <Suspense
+          fallback={
+            <button className="wallet" type="button" disabled aria-label="Connect wallet">
+              <span className="wallet-long">Connect wallet</span>
+              <span className="wallet-short">Connect</span>
+            </button>
+          }
+        >
+          <WalletButton projectId={site.reown.projectId} />
+        </Suspense>
         <a className="x-link" href={site.social.x} target="_blank" rel="noreferrer" aria-label="Haelo on X" data-magnet>
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
             <path fill="currentColor" d="M4 4h4.2l3.8 5.1L16.2 4H20l-6.3 7.2L20.2 20h-4.2l-4.1-5.5L7.6 20H4l6.6-7.5L4 4z" />

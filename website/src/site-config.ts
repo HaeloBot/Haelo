@@ -1,5 +1,7 @@
 import * as z from "zod/v4";
 
+export const DEFAULT_REOWN_PROJECT_ID = "d55fd8ddbd81e9b400102b491e41a339";
+
 const siteConfigSchema = z.object({
   token: z.object({
     symbol: z.string().min(1).default("HAELO"),
@@ -9,6 +11,11 @@ const siteConfigSchema = z.object({
   social: z.object({
     x: z.string().url().default("https://x.com/HaeloBot"),
   }),
+  reown: z
+    .object({
+      projectId: z.string().min(1).default(DEFAULT_REOWN_PROJECT_ID),
+    })
+    .default({ projectId: DEFAULT_REOWN_PROJECT_ID }),
 });
 
 export type SiteConfig = z.infer<typeof siteConfigSchema>;
@@ -20,6 +27,7 @@ export const FALLBACK_CONFIG: SiteConfig = {
     buyUrlTemplate: "https://ponsfamily.com/launchpad/{CA}",
   },
   social: { x: "https://x.com/HaeloBot" },
+  reown: { projectId: DEFAULT_REOWN_PROJECT_ID },
 };
 
 const PLACEHOLDER = /^(coming soon|ca coming soon|tbd|placeholder|todo|none|null)$/i;
