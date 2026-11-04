@@ -19,7 +19,7 @@ export function Intro({ onDone }: { onDone: () => void }): React.ReactElement {
   }, [onDone]);
 
   useEffect(() => {
-    if (sound.enabled) sound.ignite();
+    if (sound.playing) sound.ignite();
   }, []);
 
   return (

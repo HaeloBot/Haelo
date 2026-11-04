@@ -1,47 +1,118 @@
 /** Original soundtrack and impacts, synthesized in the browser. Nothing is fetched. */
 
+const PREF_KEY = "haelo-sound";
+const BPM = 138;
+
 type Osc = "sine" | "square" | "triangle" | "sawtooth";
 
+export interface SoundState {
+  on: boolean;
+  waiting: boolean;
+}
+
+function readDesired(): boolean {
+  try {
+    return localStorage.getItem(PREF_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
 class SoundEngine {
-  enabled = false;
-  reduced = false;
+  /** Preference: sound should play. Default on, remembered in localStorage. */
+  desired = false;
+  /** Audible right now (context running and bed scheduled). */
+  playing = false;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private music: GainNode | null = null;
   private sfx: GainNode | null = null;
-  private pad: OscillatorNode[] = [];
-  private noise: AudioBufferSourceNode | null = null;
+  private drones: OscillatorNode[] = [];
   private timer: number | null = null;
-  private step = 0;
-  private listeners = new Set<(on: boolean) => void>();
+  private nextTime = 0;
+  private stepIndex = 0;
+  private listeners = new Set<(state: SoundState) => void>();
+  private gestureArmed = false;
+  private onGesture = (event: Event): void => {
+    const target = event.target;
+    if (target instanceof Element && target.closest(".sound")) return;
+    if (!this.desired) {
+      this.clearGesture();
+      return;
+    }
+    void this.startAudible();
+  };
 
-  subscribe(fn: (on: boolean) => void): () => void {
+  constructor() {
+    if (typeof window === "undefined") return;
+    this.desired = readDesired();
+    if (this.desired) {
+      void this.arm();
+      this.watchGesture();
+    }
+    this.emit();
+  }
+
+  get state(): SoundState {
+    return { on: this.desired, waiting: this.desired && !this.playing };
+  }
+
+  subscribe(fn: (state: SoundState) => void): () => void {
     this.listeners.add(fn);
+    fn(this.state);
     return () => this.listeners.delete(fn);
   }
 
-  setReduced(reduced: boolean): void {
-    this.reduced = reduced;
-    if (this.music) this.music.gain.value = reduced ? 0.035 : 0.08;
+  /** Reduced motion changes visuals only. The score stays at full intensity. */
+  setReduced(_reduced: boolean): void {
+    /* visuals are handled in CSS and the 3D scenes */
   }
 
   async toggle(): Promise<boolean> {
-    if (this.enabled) {
-      this.enabled = false;
+    if (this.desired) {
+      this.desired = false;
+      this.playing = false;
+      this.persist();
+      this.clearGesture();
       this.stopBed();
       this.emit();
       return false;
     }
-    await this.arm();
-    this.enabled = true;
-    this.startBed();
-    this.ignite();
-    this.emit();
+    this.desired = true;
+    this.persist();
+    await this.startAudible();
     return true;
   }
 
+  private persist(): void {
+    try {
+      localStorage.setItem(PREF_KEY, this.desired ? "on" : "off");
+    } catch {
+      /* private mode */
+    }
+  }
+
   private emit(): void {
-    for (const fn of this.listeners) fn(this.enabled);
+    const state = this.state;
+    for (const fn of this.listeners) fn(state);
+  }
+
+  private watchGesture(): void {
+    if (this.gestureArmed || typeof window === "undefined") return;
+    this.gestureArmed = true;
+    window.addEventListener("pointerdown", this.onGesture, { capture: true });
+    window.addEventListener("keydown", this.onGesture, { capture: true });
+    window.addEventListener("touchstart", this.onGesture, { capture: true, passive: true });
+    window.addEventListener("wheel", this.onGesture, { capture: true, passive: true });
+  }
+
+  private clearGesture(): void {
+    if (!this.gestureArmed || typeof window === "undefined") return;
+    this.gestureArmed = false;
+    window.removeEventListener("pointerdown", this.onGesture, { capture: true });
+    window.removeEventListener("keydown", this.onGesture, { capture: true });
+    window.removeEventListener("touchstart", this.onGesture, { capture: true });
+    window.removeEventListener("wheel", this.onGesture, { capture: true });
   }
 
   private async arm(): Promise<void> {
@@ -51,10 +122,10 @@ class SoundEngine {
       master.gain.value = 0.9;
       master.connect(ctx.destination);
       const music = ctx.createGain();
-      music.gain.value = this.reduced ? 0.035 : 0.08;
+      music.gain.value = 0.85;
       music.connect(master);
       const sfx = ctx.createGain();
-      sfx.gain.value = this.reduced ? 0.45 : 0.85;
+      sfx.gain.value = 0.8;
       sfx.connect(master);
       this.ctx = ctx;
       this.master = master;
@@ -64,46 +135,157 @@ class SoundEngine {
     if (this.ctx.state === "suspended") await this.ctx.resume();
   }
 
+  private async startAudible(): Promise<void> {
+    if (!this.desired) return;
+    this.clearGesture();
+    await this.arm();
+    this.playing = true;
+    this.startBed();
+    this.emit();
+  }
+
   private startBed(): void {
-    if (!this.ctx || !this.music || this.pad.length > 0) return;
+    if (!this.ctx || !this.music || this.timer !== null) return;
     const ctx = this.ctx;
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = this.reduced ? 420 : 680;
-    filter.Q.value = 0.6;
-    filter.connect(this.music);
-    const chord = this.reduced ? [73.42, 110, 174.61] : [73.42, 110, 146.83, 220, 261.63];
-    for (const freq of chord) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = freq < 100 ? "sine" : "triangle";
-      osc.frequency.value = freq;
-      gain.gain.value = freq < 100 ? 0.22 : 0.05;
-      osc.connect(gain);
-      gain.connect(filter);
-      osc.start();
-      this.pad.push(osc);
+    const bus = this.music;
+    const sub = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    sub.type = "sine";
+    sub.frequency.value = 41.2;
+    subGain.gain.value = 0.34;
+    sub.connect(subGain);
+    subGain.connect(bus);
+    sub.start();
+    const fifth = ctx.createOscillator();
+    const fifthGain = ctx.createGain();
+    fifth.type = "triangle";
+    fifth.frequency.value = 82.4;
+    fifthGain.gain.value = 0.08;
+    fifth.connect(fifthGain);
+    fifthGain.connect(bus);
+    fifth.start();
+    this.drones.push(sub, fifth);
+    this.stepIndex = 0;
+    this.nextTime = ctx.currentTime + 0.05;
+    this.timer = window.setInterval(() => this.schedule(), 25);
+    this.schedule();
+  }
+
+  private schedule(): void {
+    if (!this.ctx || !this.music || !this.playing) return;
+    if (!this.desired) return;
+    const step = 60 / BPM / 4;
+    const horizon = this.ctx.currentTime + 0.25;
+    while (this.nextTime < horizon) {
+      this.hit(this.nextTime, this.stepIndex % 64);
+      this.nextTime += step;
+      this.stepIndex += 1;
     }
-    const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  }
+
+  private hit(time: number, step: number): void {
+    if (!this.ctx || !this.music) return;
+    const beat = step % 16;
+    if (beat % 8 === 0) this.kick(time);
+    if (beat === 4 || beat === 12) this.snare(time);
+    if (beat % 2 === 0) this.hat(time, beat % 4 === 0 ? 0.07 : 0.035);
+    const roots = [55, 55, 65.41, 73.42];
+    if (beat % 4 === 0) this.toneAt(time, roots[Math.floor(step / 4) % 4] ?? 55, "sawtooth", 0.18, 0.07, this.music);
+    const arp = [220, 261.63, 329.63, 392, 329.63, 261.63, 196, 246.94];
+    this.toneAt(time, arp[step % arp.length] ?? 220, "square", 0.09, 0.028, this.music);
+    if (step >= 48) this.riser(time, (step - 48) / 16);
+    if (step === 0) this.impact(time);
+  }
+
+  private kick(time: number): void {
+    if (!this.ctx || !this.music) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(160, time);
+    osc.frequency.exponentialRampToValueAtTime(42, time + 0.12);
+    gain.gain.setValueAtTime(0.7, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.22);
+    osc.connect(gain);
+    gain.connect(this.music);
+    osc.start(time);
+    osc.stop(time + 0.24);
+  }
+
+  private snare(time: number): void {
+    if (!this.ctx || !this.music) return;
+    this.toneAt(time, 190, "triangle", 0.12, 0.12, this.music);
+    this.noiseAt(time, 0.14, 0.18, 1800);
+  }
+
+  private hat(time: number, peak: number): void {
+    this.noiseAt(time, 0.04, peak, 7000);
+  }
+
+  private riser(time: number, p: number): void {
+    if (!this.ctx || !this.music) return;
+    const src = this.noiseBuffer(0.12);
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(300 + p * 4200, time);
+    filter.Q.value = 4;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.02 + p * 0.12, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.12);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.music);
+    src.start(time);
+    src.stop(time + 0.12);
+  }
+
+  private impact(time: number): void {
+    if (!this.ctx || !this.music) return;
+    this.toneAt(time, 55, "sine", 0.45, 0.2, this.music, 32);
+    this.noiseAt(time, 0.35, 0.22, 400);
+  }
+
+  private toneAt(time: number, freq: number, type: Osc, dur: number, peak: number, dest: AudioNode, slideTo?: number): void {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, time);
+    if (slideTo !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), time + dur);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(peak, time + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start(time);
+    osc.stop(time + dur + 0.02);
+  }
+
+  private noiseAt(time: number, dur: number, peak: number, highpass: number): void {
+    if (!this.ctx || !this.music) return;
+    const src = this.noiseBuffer(dur);
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "highpass";
+    filter.frequency.value = highpass;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(peak, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.music);
+    src.start(time);
+    src.stop(time + dur);
+  }
+
+  private noiseBuffer(seconds: number): AudioBufferSourceNode {
+    const ctx = this.ctx as AudioContext;
+    const length = Math.max(1, Math.floor(ctx.sampleRate * seconds));
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-    noise.loop = true;
-    const bp = ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 900;
-    bp.Q.value = 0.7;
-    const ng = ctx.createGain();
-    ng.gain.value = this.reduced ? 0.008 : 0.02;
-    noise.connect(bp);
-    bp.connect(ng);
-    ng.connect(this.music);
-    noise.start();
-    this.noise = noise;
-    if (!this.reduced) {
-      this.timer = window.setInterval(() => this.pulse(), 320);
-    }
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    return src;
   }
 
   private stopBed(): void {
@@ -114,63 +296,29 @@ class SoundEngine {
     const ctx = this.ctx;
     if (!ctx) return;
     const t = ctx.currentTime;
-    for (const osc of this.pad) {
+    for (const osc of this.drones) {
       try {
-        osc.stop(t + 0.05);
+        osc.stop(t + 0.03);
       } catch {
         /* already stopped */
       }
     }
-    this.pad = [];
-    if (this.noise) {
-      try {
-        this.noise.stop(t + 0.05);
-      } catch {
-        /* already stopped */
-      }
-      this.noise = null;
-    }
-  }
-
-  private pulse(): void {
-    if (!this.ctx || !this.enabled || !this.music) return;
-    const notes = [220, 261.63, 329.63, 392, 329.63, 293.66, 246.94, 196];
-    const freq = notes[this.step % notes.length] ?? 220;
-    this.tone(freq, "triangle", 0.16, 0.045, this.music);
-    if (this.step % 4 === 0) this.tone(78, "sine", 0.18, 0.05, this.music, 46);
-    this.step += 1;
+    this.drones = [];
   }
 
   private tone(freq: number, type: Osc, dur: number, peak: number, dest: AudioNode, slideTo?: number): void {
     if (!this.ctx) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t);
-    if (slideTo !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), t + dur);
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(peak, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    osc.connect(gain);
-    gain.connect(dest);
-    osc.start(t);
-    osc.stop(t + dur + 0.02);
+    this.toneAt(this.ctx.currentTime, freq, type, dur, peak, dest, slideTo);
   }
 
   private burst(duration: number, peak: number): void {
     if (!this.ctx || !this.sfx) return;
     const t = this.ctx.currentTime;
-    const length = Math.floor(this.ctx.sampleRate * duration);
-    const buffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-    const src = this.ctx.createBufferSource();
-    src.buffer = buffer;
+    const src = this.noiseBuffer(duration);
     const filter = this.ctx.createBiquadFilter();
     filter.type = "highpass";
-    filter.frequency.setValueAtTime(this.reduced ? 400 : 180, t);
-    filter.frequency.exponentialRampToValueAtTime(this.reduced ? 1200 : 4200, t + duration);
+    filter.frequency.setValueAtTime(180, t);
+    filter.frequency.exponentialRampToValueAtTime(4200, t + duration);
     const gain = this.ctx.createGain();
     gain.gain.setValueAtTime(peak, t);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
@@ -181,13 +329,13 @@ class SoundEngine {
   }
 
   private sfxDest(): AudioNode | null {
-    return this.enabled ? this.sfx : null;
+    return this.playing ? this.sfx : null;
   }
 
   ignite(): void {
     const dest = this.sfxDest();
-    if (!dest || !this.ctx) return;
-    this.burst(this.reduced ? 0.25 : 0.55, this.reduced ? 0.08 : 0.2);
+    if (!dest) return;
+    this.burst(0.45, 0.2);
     this.tone(196, "sawtooth", 0.4, 0.04, dest, 880);
   }
 
@@ -212,7 +360,7 @@ class SoundEngine {
   promote(): void {
     const dest = this.sfxDest();
     if (!dest) return;
-    this.burst(0.28, this.reduced ? 0.05 : 0.16);
+    this.burst(0.28, 0.16);
     this.tone(220, "square", 0.22, 0.05, dest, 440);
     window.setTimeout(() => {
       if (this.sfx) this.tone(440, "triangle", 0.28, 0.06, this.sfx, 880);
@@ -225,7 +373,7 @@ class SoundEngine {
   demote(): void {
     const dest = this.sfxDest();
     if (!dest) return;
-    this.burst(this.reduced ? 0.2 : 0.45, this.reduced ? 0.06 : 0.22);
+    this.burst(0.4, 0.22);
     this.tone(320, "sawtooth", 0.45, 0.07, dest, 48);
     this.tone(190, "square", 0.35, 0.04, dest, 60);
   }
