@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-111111?style=flat&color=CCFF00" alt="MIT license"></a>
   <a href="https://github.com/HaeloBot/Haelo/releases/tag/v0.3.0"><img src="https://img.shields.io/github/v/tag/HaeloBot/Haelo?label=release&color=6CD620" alt="Release"></a>
   <a href="package.json"><img src="https://img.shields.io/badge/node-%E2%89%A522.13-339933" alt="Node 22.13 or newer"></a>
-  <a href="https://haelo-delta.vercel.app"><img src="https://img.shields.io/badge/website-haelo--delta.vercel.app-B8FA0C?style=flat&labelColor=111111" alt="Website"></a>
+  <a href="https://haelobot.com"><img src="https://img.shields.io/badge/website-haelobot.com-B8FA0C?style=flat&labelColor=111111" alt="Website"></a>
 </p>
 
 <p align="center">
@@ -161,18 +161,14 @@ Known gaps, not dates:
 
 ## Website
 
-Live at [https://haelo-delta.vercel.app](https://haelo-delta.vercel.app). [haelobot.com](https://haelobot.com) serves the same deployment.
+Live at [https://haelobot.com](https://haelobot.com).
 
 <details>
-<summary>Deploy and the contract address</summary>
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FHaeloBot%2FHaelo&project-name=haelo&repository-name=haelo)
-
-Root Directory `website`. Leave "Include source files outside of the Root Directory" on, because the playground imports `src/`. Framework Vite. Install `npm ci`. Build `npm run build`. Output `dist`. No environment variables.
+<summary>Contract address and wallet</summary>
 
 To publish the `$HAELO` address, edit only `website/public/config.json` (`token.ca`, and `buyUrlTemplate` with `{CA}`). Push to `main`. The page fetches that file with `cache: "no-store"`. Leave `ca` empty until you have the address.
 
-The Connect wallet button uses Reown AppKit on Robinhood Chain only (`reown.projectId` in that same file). In the Reown dashboard, allowlist `haelobot.com` and `haelo-delta.vercel.app` or the modal cannot finish a connection on those domains.
+The Connect wallet button uses Reown AppKit on Robinhood Chain only (`reown.projectId` in that same file). In the Reown dashboard, allowlist `haelobot.com` or the modal cannot finish a connection on that domain.
 
 </details>
 

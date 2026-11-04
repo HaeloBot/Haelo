@@ -6,15 +6,7 @@ import { defineConfig, type Plugin } from "vitest/config";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
-/** Domain root on Vercel. `BASE_PATH` can set another prefix locally; it must not be required. */
-function siteBase(): string {
-  const raw = process.env.VERCEL ? "/" : (process.env.BASE_PATH ?? "/");
-  if (raw === "/") return "/";
-  const withSlash = raw.startsWith("/") ? raw : `/${raw}`;
-  return withSlash.endsWith("/") ? withSlash : `${withSlash}/`;
-}
-
-/** GitHub-style SPA fallback. Segment count follows the Vite base, which is `import.meta.env.BASE_URL`. */
+/** SPA fallback. Segment count follows the Vite base, which is `import.meta.env.BASE_URL`. */
 function spa404(base: string): string {
   const pathSegmentsToKeep = base.split("/").filter(Boolean).length;
   return `<!doctype html>
@@ -53,7 +45,7 @@ function spa404Plugin(base: string): Plugin {
   };
 }
 
-const base = siteBase();
+const base = "/";
 
 export default defineConfig({
   base,

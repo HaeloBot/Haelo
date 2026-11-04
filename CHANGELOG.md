@@ -2,7 +2,7 @@
 
 ## 0.3.0
 
-* Website on Vercel at the domain root (`website/`), including the in-browser shadow playground.
+* Website hosted at haelobot.com, including the in-browser shadow playground.
 * `$HAELO` page at `/token`. Contract address and buy link come from `website/public/config.json`, fetched at runtime. An empty address shows "CA coming soon" and disables Buy. The page states that the token is a memecoin and not financial advice.
 * Synthesized soundtrack, on by default after the first gesture, with a mute toggle remembered in the browser.
 * X link in the site nav, from the same config file.
