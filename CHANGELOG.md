@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
+* Package `haelo-mcp` is prepared for npm (`haelo` and `haelo-mcp` bins). Publish is a GitHub release workflow. It is not published from a laptop without `NPM_TOKEN`.
+* The website playground quotes Uniswap v3 on Robinhood Chain. Shadow and paper stay unsigned. A live rung can ask the connected wallet to sign a swap after the policy gate. The site never asks for a private key.
 * Robinhood Chain mainnet swaps through Uniswap v3 SwapRouter02. Paper quotes on-chain and does not sign. Live sends need `live.enabled` and `confirm: true`, use an exact token approval, and record the transaction hash in the audit log. Testnet has no published Uniswap router.
 
 ## 0.3.0

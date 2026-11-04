@@ -1,15 +1,20 @@
 {
   "name": "haelo-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Autonomy ladder gateway for AI trading agents: an MCP server that earns agents more freedom (shadow, paper, propose, micro, standard) and demotes them automatically.",
   "license": "MIT",
   "type": "module",
   "author": "Kavindu Diluka",
+  "homepage": "https://haelobot.com",
+  "bugs": {
+    "url": "https://github.com/HaeloBot/Haelo/issues"
+  },
   "engines": {
     "node": ">=22.13"
   },
   "bin": {
-    "haelo": "dist/cli.js"
+    "haelo": "dist/cli.js",
+    "haelo-mcp": "dist/cli.js"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -36,7 +41,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "smoke:alpaca": "node dist/scripts/smoke-alpaca.js",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run build && npm test",
     "smoke:robinhood-crypto": "node dist/scripts/smoke-robinhood-crypto.js",
     "doctor": "node dist/cli.js doctor"
   },
@@ -77,5 +82,8 @@
   },
   "optionalDependencies": {
     "@napi-rs/keyring": "^2.1.2"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -52,6 +52,23 @@ flowchart LR
 | `micro` | Sent live under tighter caps (default $25 / order, $100 / day, 5 orders / day). | tiny |
 | `standard` | Sent live under the rails in your policy. | your limits |
 
+## Install
+
+```bash
+npx haelo-mcp --help
+npm i -g haelo-mcp
+```
+
+Or clone and build:
+
+```bash
+git clone https://github.com/HaeloBot/Haelo && cd Haelo
+npm ci && npm run build
+node dist/cli.js --help
+```
+
+The package name on npm is `haelo-mcp`. Publishing runs from a GitHub release with `NPM_TOKEN`. This repository does not publish on its own.
+
 ## Quickstart
 
 No broker account:
