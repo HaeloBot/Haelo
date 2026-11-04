@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "haelo": {
+      "command": "npx",
+      "args": ["-y", "haelo-solana", "serve", "--stdio", "--config", "/ABSOLUTE/PATH/TO/haelo.yaml"],
+      "env": {
+        "HAELO_RPC_URL": ""
+      }
+    }
+  }
+}
