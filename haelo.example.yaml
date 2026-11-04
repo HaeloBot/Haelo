@@ -1,0 +1,98 @@
+# Haelo policy. Read docs/POLICY.md for every field.
+# Lock it once you are happy: `haelo policy lock`. The gateway then refuses to start if this file changes.
+version: 1
+stateDir: ~/.haelo
+
+broker:
+  type: alpaca
+  # Credentials come from the environment (see .env.example). A free paper account is enough to start.
+  feed: iex
+
+# The only account the agent may trade in; orders naming another account are blocked.
+# Set it like:  agent: { accountId: "123456789" }
+agent: {}
+
+# LIVE TRADING IS OFF until you opt in here. While false, nothing is ever sent to a live account:
+# micro/standard cannot be configured or promoted into, and approved proposals are not executed.
+# Before turning it on, read docs/GO_LIVE.md and run `haelo doctor --live`.
+live:
+  enabled: false
+
+storage:
+  backend: sqlite           # sqlite (<stateDir>/haelo.db) or jsonl (state.json + audit.jsonl)
+
+secrets:
+  store: auto               # auto = OS keychain if available, else 0600 files; or keychain / file
+
+# Hard rails. These apply at the standard rung; lower rungs can only tighten them.
+rails:
+  maxOrderUsd: 500
+  maxDailyUsd: 2000
+  maxOrdersPerDay: 20
+  maxOrdersPerMinute: 5
+  symbolCooldownSeconds: 0
+  allowSymbols: []          # empty = any symbol not blocked
+  blockSymbols: []
+  allowOrderTypes: [market, limit]
+  allowAssetClasses: [equity, crypto]
+  allowShort: false
+  maxPositionPct: 100       # max share of total equity in one symbol after an order
+
+# Tighter caps for rungs below standard.
+rungs:
+  micro:
+    maxOrderUsd: 25
+    maxDailyUsd: 100
+    maxOrdersPerDay: 5
+    allowSymbols: []        # e.g. [AAPL, MSFT] to restrict the micro rung to a short list
+
+ladder:
+  start: shadow
+  autoPromote:
+    enabled: false          # humans promote. Turn on only to auto-promote through non-live rungs.
+    maxRung: propose
+  # Criteria to LEAVE each rung (all must hold). Written down before the agent runs.
+  criteria:
+    shadow:  { minDays: 7,  minDecisions: 20, maxInvalidRate: 0.10, maxBreaches: 0, maxInjectionFollows: 0, maxDrawdownPct: 10 }
+    paper:   { minDays: 7,  minDecisions: 20, maxInvalidRate: 0.10, maxBreaches: 0, maxInjectionFollows: 0, maxDrawdownPct: 10 }
+    propose: { minDays: 7,  minDecisions: 10, maxInvalidRate: 0.10, maxBreaches: 0, maxInjectionFollows: 0, maxDrawdownPct: 10 }
+    micro:   { minDays: 14, minDecisions: 25, maxInvalidRate: 0.05, maxBreaches: 0, maxInjectionFollows: 0, maxDrawdownPct: 5 }
+  demotion:
+    onBreach: shadow
+    onDrawdown: one_rung
+    onToolDrift: shadow
+    onInjectionFollow: one_rung
+    cancelOpenOrders: true
+    cooldownHours: 24
+  drawdown:
+    maxPct: 10
+
+shadow:
+  startingCash: 10000
+  slippageBps: 5
+  feeBps: 0
+
+approvals:
+  ttlSeconds: 900
+  web: { host: 127.0.0.1, port: 8790 }   # `haelo approvals-ui`
+
+injection:
+  enabled: true
+  windowCalls: 5
+  windowSeconds: 900
+  action: block_and_demote
+
+tools:
+  trustOnFirstUse: true     # pin the upstream tool list on first start
+  recheckSeconds: 0         # 0 = verify the tool list before every order
+
+household:
+  enabled: true
+  washSale: { enabled: true, windowDays: 30, block: false, includeCrypto: false }
+  concentration: { maxPct: 30, block: true }
+  lots: { warnDaysToLongTerm: 45 }
+  requireData: false
+
+http:
+  host: 127.0.0.1
+  port: 8787

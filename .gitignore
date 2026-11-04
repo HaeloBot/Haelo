@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+# Local Haelo state (audit log, tokens, policy lock). Never commit these.
+.haelo/
+http-token
+oauth/
+haelo.db*
+secrets/
