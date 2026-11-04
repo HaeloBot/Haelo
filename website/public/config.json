@@ -1,7 +1,7 @@
 {
   "token": {
     "symbol": "HAELO",
-    "ca": "0x51eb01784e616bff128c2899421503c334034ff4",
+    "ca": "",
     "buyUrlTemplate": "https://ponsfamily.com/launchpad/{CA}"
   },
   "social": {
