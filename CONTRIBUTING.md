@@ -5,7 +5,7 @@ Thanks for helping. Haelo is safety-critical in a narrow sense (it sits between 
 ## Setup
 
 ```bash
-git clone https://github.com/HaeloBot/haelo-solana && cd haelo
+git clone https://github.com/HaeloBot/Haelo && cd haelo
 npm ci
 npm run lint && npm run typecheck && npm test
 npm run test:coverage   # CI fails below 90% lines

@@ -19,7 +19,7 @@ const FAQ = [
   },
   {
     q: "Who wrote it?",
-    a: "Kavindu Diluka. The source is MIT licensed at github.com/HaeloBot/haelo-solana. RepoScan notes live in docs/ZAUTH.md. The repository does not invent contributors to look older than it is.",
+    a: "Kavindu Diluka. The source is MIT licensed at github.com/HaeloBot/Haelo. RepoScan notes live in docs/ZAUTH.md. The repository does not invent contributors to look older than it is.",
   },
 ];
 

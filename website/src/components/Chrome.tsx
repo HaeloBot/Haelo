@@ -156,7 +156,7 @@ export function Chrome(): React.ReactElement {
         </AnimatePresence>
         <footer className="footer">
           <span>Not financial advice. Haelo limits damage. It does not promise profit.</span>
-          <a href="https://github.com/HaeloBot/haelo-solana">GitHub</a>
+          <a href="https://github.com/HaeloBot/Haelo">GitHub</a>
         </footer>
       </div>
     </>

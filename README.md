@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/HaeloBot/haelo-solana/actions/workflows/ci.yml"><img src="https://github.com/HaeloBot/haelo-solana/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/HaeloBot/Haelo/actions/workflows/ci.yml"><img src="https://github.com/HaeloBot/Haelo/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-111111?style=flat&color=CCFF00" alt="MIT license"></a>
   <a href="package.json"><img src="https://img.shields.io/badge/node-%E2%89%A522.13-339933" alt="Node 22.13 or newer"></a>
   <img src="https://img.shields.io/badge/chain-Solana-9945FF?style=flat&labelColor=111111" alt="Solana">
@@ -60,7 +60,7 @@ npm i -g haelo-solana        # installs the `haelo` command
 Or from source:
 
 ```bash
-git clone https://github.com/HaeloBot/haelo-solana && cd haelo-solana
+git clone https://github.com/HaeloBot/Haelo && cd Haelo
 npm ci && npm run build
 node dist/cli.js --help
 ```
