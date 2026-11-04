@@ -16,7 +16,25 @@ shadow ──► paper ──► propose ──► micro ──► standard
 [![CI](https://github.com/HaeloBot/Haelo/actions/workflows/ci.yml/badge.svg)](https://github.com/HaeloBot/Haelo/actions/workflows/ci.yml)
 MIT licensed · Node ≥ 22.13 · TypeScript · official MCP TypeScript SDK (v2) · SQLite (built-in `node:sqlite`)
 
-The site is [https://haelobot.github.io/Haelo/](https://haelobot.github.io/Haelo/). The playground there runs this repository's policy engine, ladder, and audit chain in the browser, in shadow only. It never asks for a broker key. Live trading stays on the local CLI.
+The website playground runs this repository's policy engine, ladder, and audit chain in the browser, in shadow only. It never asks for a broker key. Live trading stays on the local CLI. The Vercel URL will be added here once the project is deployed.
+
+## Deploy to Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FHaeloBot%2FHaelo&project-name=haelo&repository-name=haelo)
+
+The app lives in `website/` and imports the engine from `src/` (policy, ladder, shadow ledger, audit chain). Use these project settings. `website/vercel.json` already sets the framework, install, build, output, and the SPA rewrite.
+
+| Setting | Value |
+|---|---|
+| Root Directory | `website` |
+| Include source files outside of the Root Directory in the Build Step | **On.** Required. New Vercel projects enable this by default. The playground imports `../src`. |
+| Framework Preset | Vite |
+| Install Command | `npm ci` |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+| Environment variables | None. `VERCEL` is set by the platform and keeps the Vite base at `/`. |
+
+Deep links (`/playground`, `/docs`, and the rest) rewrite to `/index.html`. Static files are served first. No broker keys, and no GitHub Pages base path.
 
 <p align="center"><img src="docs/website/landing.png" alt="Haelo landing page. A lime robot with a halo beside the headline Earn the next rung." width="780"></p>
 <p align="center"><img src="docs/website/playground.png" alt="Haelo playground after a shadow session promoted to paper, with the hash-chained audit log." width="780"></p>
