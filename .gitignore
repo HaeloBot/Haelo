@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+# Local Leash state (audit log, tokens, policy lock). Never commit these.
+.leash/
+http-token
+oauth/
+leash.db*
+secrets/

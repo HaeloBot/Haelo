@@ -1,0 +1,80 @@
+{
+  "name": "leash-mcp",
+  "version": "0.2.0",
+  "description": "Autonomy ladder gateway for AI trading agents: an MCP server that earns agents more freedom (shadow, paper, propose, micro, standard) and demotes them automatically.",
+  "license": "MIT",
+  "type": "module",
+  "author": "Kavindu Diluka",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "bin": {
+    "leash": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "examples",
+    "docs",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "leash.example.yaml"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "smoke:alpaca": "node dist/scripts/smoke-alpaca.js",
+    "prepublishOnly": "npm run build",
+    "smoke:robinhood-crypto": "node dist/scripts/smoke-robinhood-crypto.js",
+    "doctor": "node dist/cli.js doctor"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "trading",
+    "ai-agents",
+    "guardrails",
+    "alpaca",
+    "robinhood",
+    "autonomy"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@modelcontextprotocol/node": "^2.1.2",
+    "@modelcontextprotocol/server": "^2.4.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.1.0",
+    "eslint": "^10.14.0",
+    "fast-check": "^4.10.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OWNER/leash.git"
+  },
+  "overrides": {
+    "minimatch": "^11.0.4"
+  },
+  "optionalDependencies": {
+    "@napi-rs/keyring": "^2.1.2"
+  }
+}

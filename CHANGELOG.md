@@ -1,0 +1,25 @@
+# Changelog
+
+## 0.2.0
+
+* **Live opt-in.** `live.enabled: false` by default. Without it, live rungs cannot be configured, promoted into or executed.
+* **`leash doctor [--live]`.** Read-only preflight covering config, policy lock, permissions, storage, the audit chain and the secret store. It also checks Alpaca paper/live accounts and market data, Robinhood Crypto signed requests, and upstream MCP connect/tools/configured names/OAuth state. New `docs/GO_LIVE.md` checklist.
+* **SQLite storage** (default) for state and the audit chain via `node:sqlite`, with append-only triggers. It imports from JSONL once, and `leash audit export` writes JSONL that `leash audit verify --file` accepts.
+* **OS keychain** token storage via `@napi-rs/keyring`, with a 0600 file fallback and migration from 0.1 token files.
+* **Local web approvals UI** (`leash approvals-ui`): loopback only, token login to an HttpOnly cookie, CSRF, typed confirmation, strict CSP.
+* The account wall is now enforced even when household checks are off.
+* `leash mock-upstream --stdio`.
+* Tests went from 160 to 240+. Coverage thresholds are enforced in CI (lines ≥ 90%). There is an end-to-end OAuth 2.1 + PKCE test against a local mock IdP.
+* `npm audit` is clean, including dev dependencies (minimatch override). Node ≥ 22.13.
+
+## 0.1.0
+
+First release.
+
+* MCP gateway over stdio and Streamable HTTP (official TypeScript SDK v2), per-request server factory.
+* Autonomy ladder: shadow → paper → propose → micro → standard; criteria-gated human promotion; automatic demotion on breach, drawdown, tool-list drift and injection follow-through; cool-down.
+* Pure policy evaluator with per-rung rails; household preflight (account wall, concentration, wash-sale and lot warnings).
+* Shadow ledger with slippage and fees; prompt-injection tripwire; tool-list pinning; hash-chained audit log; policy lock.
+* Adapters: Alpaca (paper + live), Robinhood Crypto Trading API (Ed25519-signed), upstream MCP proxy (OAuth 2.1 PKCE / bearer / stdio).
+* CLI: init, policy, serve, status, report, promote, demote, panic, proposals, approve/decline, pin, audit, auth, mock-upstream.
+* Known gaps: adapters not yet verified against the real Alpaca/Robinhood services (see README matrix); CLI-only approvals.

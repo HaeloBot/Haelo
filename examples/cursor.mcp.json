@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "leash": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/leash/dist/cli.js", "serve", "--stdio", "--config", "/ABSOLUTE/PATH/TO/leash.yaml"],
+      "env": {
+        "ALPACA_PAPER_KEY_ID": "PK...",
+        "ALPACA_PAPER_SECRET_KEY": "..."
+      }
+    }
+  }
+}
