@@ -36,3 +36,22 @@ jobs:
           grep -q 'src="/assets/' dist/index.html
           ! grep -q '/Haelo/' dist/index.html
           grep -q 'pathSegmentsToKeep = 0' dist/404.html
+
+  # Vercel builds with Root Directory = website and never installs the repo
+  # root, so engine files in ../src must bundle from website/node_modules alone.
+  isolated-build:
+    name: build (website only, as Vercel)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+        working-directory: website
+      - name: Root has no node_modules
+        run: test ! -d node_modules
+      - run: npm run build
+        working-directory: website

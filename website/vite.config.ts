@@ -45,11 +45,31 @@ function spa404Plugin(base: string): Plugin {
   };
 }
 
+const repoSrc = path.resolve(root, "../src") + path.sep;
+const bareSpecifier = /^(?![./\0]|[a-zA-Z]:|node:)/;
+
+/**
+ * Engine files under ../src import packages (viem, zod, yaml) that a
+ * website-only install keeps in website/node_modules. Resolve those bare
+ * imports as if this package had made them, so Vercel's isolated build and a
+ * full-repo install bundle the same code.
+ */
+function engineDepsPlugin(): Plugin {
+  return {
+    name: "haelo-engine-deps",
+    enforce: "pre",
+    async resolveId(source, importer, options) {
+      if (!importer || !importer.startsWith(repoSrc) || !bareSpecifier.test(source)) return null;
+      return this.resolve(source, path.join(root, "index.html"), { ...options, skipSelf: true });
+    },
+  };
+}
+
 const base = "/";
 
 export default defineConfig({
   base,
-  plugins: [react(), spa404Plugin(base)],
+  plugins: [engineDepsPlugin(), react(), spa404Plugin(base)],
   resolve: {
     alias: {
       "node:crypto": path.join(root, "src/shims/node-crypto.ts"),
