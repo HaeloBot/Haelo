@@ -14,9 +14,11 @@ shadow ──► paper ──► propose ──► micro ──► standard
 > **Not financial advice. Not a guarantee.** Haelo reduces how badly an agent can hurt you. It does not make trading safe or profitable. Read [Limitations](#limitations) and [SECURITY.md](SECURITY.md) before connecting real money.
 
 [![CI](https://github.com/HaeloBot/Haelo/actions/workflows/ci.yml/badge.svg)](https://github.com/HaeloBot/Haelo/actions/workflows/ci.yml)
+[![website](https://github.com/HaeloBot/Haelo/actions/workflows/website.yml/badge.svg)](https://github.com/HaeloBot/Haelo/actions/workflows/website.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-111111?style=flat&color=CCFF00)](LICENSE)
 MIT licensed · Node ≥ 22.13 · TypeScript · official MCP TypeScript SDK (v2) · SQLite (built-in `node:sqlite`)
 
-The website playground runs this repository's policy engine, ladder, and audit chain in the browser, in shadow only. It never asks for a broker key. Live trading stays on the local CLI. The Vercel URL will be added here once the project is deployed.
+The website is [https://haelo-delta.vercel.app](https://haelo-delta.vercel.app). The playground runs this repository's policy engine, ladder, and audit chain in the browser, in shadow only. It never asks for a broker key. Live trading stays on the local CLI. `$HAELO` on that site is a community token page, not a promise of price or access.
 
 ## Deploy to Vercel
 
@@ -34,7 +36,13 @@ The app lives in `website/` and imports the engine from `src/` (policy, ladder, 
 | Output Directory | `dist` |
 | Environment variables | None. `VERCEL` is set by the platform and keeps the Vite base at `/`. |
 
-Deep links (`/playground`, `/docs`, and the rest) rewrite to `/index.html`. Static files are served first. No broker keys, and no GitHub Pages base path.
+Deep links (`/playground`, `/docs`, `/token`, and the rest) rewrite to `/index.html`. Static files are served first. No broker keys.
+
+### Update the $HAELO contract address
+
+Edit only `website/public/config.json`. Put the mint or contract address in `token.ca`. `token.buyUrlTemplate` is `https://ponsfamily.com/launchpad/{CA}`; the page replaces `{CA}` when someone clicks Buy. `social.x` is the X link in the nav. Commit that file and push to `main`. Vercel redeploys it.
+
+The page fetches `/config.json` with `cache: "no-store"` and a cache-busting query. `website/vercel.json` also sends `Cache-Control: no-cache` for that file, so a redeploy is enough. No application code change is required. Leave `ca` as `""` until the address exists: the page shows "CA coming soon" and the buy button stays disabled. Do not put a price, a market-cap claim, or a promise in that file. The disclaimer on the page stays.
 
 <p align="center"><img src="docs/website/landing.png" alt="Haelo landing page. A lime robot with a halo beside the headline Earn the next rung." width="780"></p>
 <p align="center"><img src="docs/website/playground.png" alt="Haelo playground after a shadow session promoted to paper, with the hash-chained audit log." width="780"></p>

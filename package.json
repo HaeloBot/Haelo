@@ -1,6 +1,6 @@
 {
   "name": "haelo-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Autonomy ladder gateway for AI trading agents: an MCP server that earns agents more freedom (shadow, paper, propose, micro, standard) and demotes them automatically.",
   "license": "MIT",
   "type": "module",
