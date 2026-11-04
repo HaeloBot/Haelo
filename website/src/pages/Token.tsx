@@ -34,7 +34,7 @@ export default function Token(): React.ReactElement {
         title={`$${symbol} — Haelo`}
         description={`$${symbol} is the community token for the Haelo project. It is launching on ponsfamily.com. Not financial advice.`}
       />
-      <section className="token-hero" aria-label={`${symbol} token`}>
+      <section className="token-hero" data-fx="level" aria-label={`${symbol} token`}>
         <div className="token-stage">
           <Suspense fallback={<div className="scene-fallback" />}>
             <CoinScene reduced={reduced} />
@@ -49,14 +49,11 @@ export default function Token(): React.ReactElement {
         </div>
       </section>
 
-      <section className="band token-about">
-        <h2 className="display">About ${symbol}</h2>
+      <section className="band token-about" data-fx="section">
+        <h2 className="display" data-fx="head">About ${symbol}</h2>
         <p>
           ${symbol} is a community token for the people around Haelo, the MCP gateway that puts trading agents on an autonomy ladder. It is launching on{" "}
           <a href="https://ponsfamily.com">ponsfamily.com</a>. It does not unlock the software, it is not equity in the project, and it is not a promise of a price.
-        </p>
-        <p className="token-disclaimer">
-          Not financial advice. ${symbol} is a memecoin. It is high risk and can go to zero. Nothing on this page is an offer to sell, a solicitation to buy, or a prediction of value.
         </p>
 
         <div className={copied ? "ca-card copied" : "ca-card"}>
@@ -94,6 +91,7 @@ export default function Token(): React.ReactElement {
             ponsfamily.com
           </a>
         </div>
+        <p className="token-note">Memecoin. High risk. Not financial advice.</p>
       </section>
     </article>
   );
