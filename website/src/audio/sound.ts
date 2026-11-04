@@ -26,7 +26,15 @@ class SoundEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private music: GainNode | null = null;
+  private drive: BiquadFilterNode | null = null;
   private sfx: GainNode | null = null;
+  private energy = 0;
+  private energyTarget = 0;
+  private lastHover = 0;
+  private lastClick = 0;
+  private lastWhoosh = 0;
+  private lastBass = 0;
+  private lastLevel = 0;
   private drones: OscillatorNode[] = [];
   private timer: number | null = null;
   private nextTime = 0;
@@ -123,7 +131,13 @@ class SoundEngine {
       master.connect(ctx.destination);
       const music = ctx.createGain();
       music.gain.value = 0.85;
-      music.connect(master);
+      const drive = ctx.createBiquadFilter();
+      drive.type = "lowpass";
+      drive.frequency.value = 900;
+      drive.Q.value = 0.7;
+      music.connect(drive);
+      drive.connect(master);
+      this.drive = drive;
       const sfx = ctx.createGain();
       sfx.gain.value = 0.8;
       sfx.connect(master);
@@ -174,6 +188,13 @@ class SoundEngine {
   private schedule(): void {
     if (!this.ctx || !this.music || !this.playing) return;
     if (!this.desired) return;
+    this.energy += (this.energyTarget - this.energy) * 0.18;
+    this.energyTarget *= 0.9;
+    if (this.drive) {
+      const open = 780 + this.energy * 9200;
+      this.drive.frequency.setTargetAtTime(open, this.ctx.currentTime, 0.08);
+      this.drive.Q.setTargetAtTime(0.6 + this.energy * 4, this.ctx.currentTime, 0.08);
+    }
     const step = 60 / BPM / 4;
     const horizon = this.ctx.currentTime + 0.25;
     while (this.nextTime < horizon) {
@@ -339,12 +360,6 @@ class SoundEngine {
     this.tone(196, "sawtooth", 0.4, 0.04, dest, 880);
   }
 
-  click(): void {
-    const dest = this.sfxDest();
-    if (!dest) return;
-    this.tone(1400, "square", 0.05, 0.03, dest);
-  }
-
   fill(): void {
     const dest = this.sfxDest();
     if (!dest) return;
@@ -390,6 +405,89 @@ class SoundEngine {
 
   panic(): void {
     this.demote();
+  }
+
+  /** 0–1 scroll speed. Opens the music filter while the page is moving. */
+  setScrollEnergy(amount: number): void {
+    const next = Math.max(0, Math.min(1, amount));
+    if (next > this.energyTarget) this.energyTarget = next;
+  }
+
+  private gap(stamp: number, min: number): boolean {
+    const now = performance.now();
+    if (now - stamp < min || !this.sfxDest()) return false;
+    return true;
+  }
+
+  whoosh(): void {
+    if (!this.gap(this.lastWhoosh, 420)) return;
+    this.lastWhoosh = performance.now();
+    if (!this.ctx || !this.sfx) return;
+    const t = this.ctx.currentTime;
+    const src = this.noiseBuffer(0.28);
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(240, t);
+    filter.frequency.exponentialRampToValueAtTime(2400, t + 0.28);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.12, t + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.sfx);
+    src.start(t);
+    src.stop(t + 0.3);
+  }
+
+  bassHit(): void {
+    if (!this.gap(this.lastBass, 380)) return;
+    this.lastBass = performance.now();
+    const dest = this.sfxDest();
+    if (!dest || !this.ctx) return;
+    this.toneAt(this.ctx.currentTime, 90, "sine", 0.28, 0.22, dest, 36);
+  }
+
+  scrollRiser(): void {
+    if (!this.gap(this.lastWhoosh, 500)) return;
+    this.lastWhoosh = performance.now();
+    const dest = this.sfxDest();
+    if (!dest || !this.ctx) return;
+    this.toneAt(this.ctx.currentTime, 180, "sawtooth", 0.35, 0.05, dest, 720);
+  }
+
+  stutter(): void {
+    if (!this.gap(this.lastHover, 240)) return;
+    this.lastHover = performance.now();
+    const dest = this.sfxDest();
+    if (!dest || !this.ctx) return;
+    this.toneAt(this.ctx.currentTime, 1400, "square", 0.04, 0.03, dest);
+    this.toneAt(this.ctx.currentTime + 0.06, 700, "square", 0.04, 0.025, dest);
+  }
+
+  levelUp(): void {
+    if (!this.gap(this.lastLevel, 1100)) return;
+    this.lastLevel = performance.now();
+    const dest = this.sfxDest();
+    if (!dest || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    [392, 523.25, 659.25, 784].forEach((freq, i) => this.toneAt(t + i * 0.06, freq, "triangle", 0.22, 0.06, dest));
+  }
+
+  hover(): void {
+    const now = performance.now();
+    if (now - this.lastHover < 110 || !this.sfxDest() || !this.ctx) return;
+    this.lastHover = now;
+    this.toneAt(this.ctx.currentTime, 880, "sine", 0.04, 0.02, this.sfxDest() as AudioNode);
+  }
+
+  click(): void {
+    const now = performance.now();
+    if (now - this.lastClick < 60) return;
+    this.lastClick = now;
+    const dest = this.sfxDest();
+    if (!dest) return;
+    this.tone(1400, "square", 0.05, 0.03, dest);
   }
 }
 
