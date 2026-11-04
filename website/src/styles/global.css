@@ -201,7 +201,7 @@ a:hover { color: white; }
   left: 0;
   border-radius: 50%;
   pointer-events: none;
-  z-index: 50;
+  z-index: 2147483647;
   mix-blend-mode: difference;
   display: none;
 }
@@ -217,7 +217,7 @@ a:hover { color: white; }
   border-radius: 50%;
   background: var(--lime);
   pointer-events: none;
-  z-index: 49;
+  z-index: 2147483647;
   display: none;
   opacity: 0.35;
 }
@@ -236,10 +236,33 @@ a:hover { color: white; }
   55% { transform: translateX(5px) skewX(4deg); }
   100% { transform: none; }
 }
+/* Native cursor stays visible. The ring, dot, and trail are a decorative overlay. */
+html, body { cursor: auto; }
 @media (hover: hover) and (pointer: fine) {
   body.fine .cursor, body.fine .cursor-dot, body.fine .trail { display: block; }
-  body.fine, body.fine a, body.fine button { cursor: none; }
-  body.fine textarea, body.fine input, body.fine select { cursor: text; }
+}
+html.appkit-open,
+html.appkit-open body,
+html.appkit-open body.fine,
+html.appkit-open body.fine a,
+html.appkit-open body.fine button,
+html.appkit-open body.fine textarea,
+html.appkit-open body.fine input,
+html.appkit-open body.fine select {
+  cursor: auto;
+}
+html.appkit-open .cursor,
+html.appkit-open .cursor-dot,
+html.appkit-open .trail,
+html.appkit-open body.fine .cursor,
+html.appkit-open body.fine .cursor-dot,
+html.appkit-open body.fine .trail {
+  display: none;
+}
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  html, body { cursor: auto; }
+  .cursor, .cursor-dot, .trail,
+  body.fine .cursor, body.fine .cursor-dot, body.fine .trail { display: none; }
 }
 
 .display {
