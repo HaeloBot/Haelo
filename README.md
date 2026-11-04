@@ -16,7 +16,6 @@
 </p>
 
 <p align="center">
-  <a href="https://haelo-delta.vercel.app"><strong>haelo-delta.vercel.app</strong></a>
   · <a href="https://haelobot.com">haelobot.com</a>
 </p>
 
