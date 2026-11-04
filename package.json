@@ -69,7 +69,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OWNER/haelo.git"
+    "url": "git+https://github.com/HaeloBot/Haelo.git"
   },
   "overrides": {
     "minimatch": "^11.0.4"

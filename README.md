@@ -1,6 +1,8 @@
+<p align="center"><img src="assets/haelo-icon-512.png" alt="Haelo" width="160"></p>
+
 # Haelo
 
-**An autonomy ladder for AI trading agents.** Haelo is an [MCP](https://modelcontextprotocol.io) gateway that sits between your agent and your broker. The agent starts on a haelo (everything simulated), and earns more freedom only by meeting criteria **you wrote down in advance**. Break a rule and it is demoted automatically, with no human in the loop.
+**An autonomy ladder for AI trading agents.** Haelo is an [MCP](https://modelcontextprotocol.io) gateway that sits between your agent and your broker. The agent starts on a short leash (everything simulated), and earns more freedom only by meeting criteria **you wrote down in advance**. Break a rule and it is demoted automatically, with no human in the loop.
 
 ```
 shadow ──► paper ──► propose ──► micro ──► standard
@@ -11,7 +13,7 @@ shadow ──► paper ──► propose ──► micro ──► standard
 
 > **Not financial advice. Not a guarantee.** Haelo reduces how badly an agent can hurt you. It does not make trading safe or profitable. Read [Limitations](#limitations) and [SECURITY.md](SECURITY.md) before connecting real money.
 
-[![CI](https://github.com/OWNER/haelo/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/haelo/actions/workflows/ci.yml)
+[![CI](https://github.com/HaeloBot/Haelo/actions/workflows/ci.yml/badge.svg)](https://github.com/HaeloBot/Haelo/actions/workflows/ci.yml)
 MIT licensed · Node ≥ 22.13 · TypeScript · official MCP TypeScript SDK (v2) · SQLite (built-in `node:sqlite`)
 
 ---
@@ -63,7 +65,7 @@ Nothing here is a stub presented as working. Where something cannot be checked w
 ## Quickstart (no broker account needed)
 
 ```bash
-git clone https://github.com/OWNER/haelo && cd haelo
+git clone https://github.com/HaeloBot/Haelo && cd haelo
 npm ci && npm run build
 
 # 1. a local mock broker MCP server (test double, see the matrix above)
