@@ -5,6 +5,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Meta } from "../components/Meta.js";
 import { Intro } from "../components/Intro.js";
 import { useReduced } from "../components/Chrome.js";
+import { sound } from "../audio/sound.js";
 
 const HeroScene = lazy(() => import("../scene/HeroScene.js"));
 
@@ -51,6 +52,7 @@ export default function Landing(): React.ReactElement {
   const reduced = useReduced();
   const sectionRef = useRef<HTMLElement>(null);
   const progress = useRef(0);
+  const rungRef = useRef(-1);
   const [active, setActive] = useState(-1);
   const [intro, setIntro] = useState(false);
 
@@ -75,7 +77,19 @@ export default function Landing(): React.ReactElement {
       onUpdate: (self) => {
         progress.current = self.progress;
         const idx = self.progress < 0.18 ? -1 : Math.min(4, Math.floor((self.progress - 0.18) / 0.164));
-        setActive((prev) => (prev === idx ? prev : idx));
+        if (idx === rungRef.current) return;
+        const prev = rungRef.current;
+        rungRef.current = idx;
+        setActive(idx);
+        if (idx < 0 || reduced) return;
+        sound.bassHit();
+        if (idx === 4) sound.levelUp();
+        else sound.scrollRiser();
+        const root = document.documentElement;
+        root.classList.remove("shake-up", "shake-down");
+        void root.offsetWidth;
+        root.classList.add(idx > prev ? "shake-up" : "shake-down");
+        window.setTimeout(() => root.classList.remove("shake-up", "shake-down"), 420);
       },
     });
     return () => trigger.kill();
@@ -150,9 +164,9 @@ export default function Landing(): React.ReactElement {
         ) : null}
       </section>
 
-      <section className="band">
+      <section className="band" data-fx="section">
         <p className="kicker">What it actually does</p>
-        <h2 className="display">
+        <h2 className="display" data-fx="head">
           A leash
           <br />
           that lengthens.
@@ -160,7 +174,7 @@ export default function Landing(): React.ReactElement {
         <div className="feature-grid">
           {FEATURES.map((f) => (
             <article key={f.n} className="card" data-magnet>
-              <div className="idx">{f.n}</div>
+              <Count className="idx" to={Number(f.n)} reduced={reduced} />
               <h3>{f.t}</h3>
               <p>{f.d}</p>
             </article>
@@ -168,9 +182,9 @@ export default function Landing(): React.ReactElement {
         </div>
       </section>
 
-      <section className="band">
+      <section className="band" data-fx="section">
         <p className="kicker">Against a plain broker MCP</p>
-        <h2 className="display">The agent is untrusted.</h2>
+        <h2 className="display" data-fx="head">The agent is untrusted.</h2>
         <table className="compare">
           <thead>
             <tr>
@@ -214,7 +228,7 @@ export default function Landing(): React.ReactElement {
         </table>
       </section>
 
-      <section className="closing">
+      <section className="closing" data-fx="level">
         <p className="kicker">Try the engine</p>
         <h2 className="display">
           Same rules.
@@ -232,6 +246,40 @@ export default function Landing(): React.ReactElement {
         </div>
       </section>
     </>
+  );
+}
+
+function Count({ to, reduced, className }: { to: number; reduced: boolean; className?: string }): React.ReactElement {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [n, setN] = useState(reduced ? to : 0);
+  useEffect(() => {
+    if (reduced) return;
+    const el = ref.current;
+    if (!el) return;
+    let timer = 0;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        io.disconnect();
+        let i = 0;
+        timer = window.setInterval(() => {
+          i += 1;
+          setN(i);
+          if (i >= to) window.clearInterval(timer);
+        }, 70);
+      },
+      { threshold: 0.6 },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      window.clearInterval(timer);
+    };
+  }, [reduced, to]);
+  return (
+    <span ref={ref} className={className}>
+      {String(n).padStart(2, "0")}
+    </span>
   );
 }
 

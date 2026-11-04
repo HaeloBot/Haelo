@@ -175,8 +175,37 @@ a:hover { color: white; }
 }
 .cursor { width: 36px; height: 36px; border: 1px solid var(--lime); margin: -18px 0 0 -18px; }
 .cursor-dot { width: 6px; height: 6px; background: var(--lime); margin: -3px 0 0 -3px; }
+.trail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--lime);
+  pointer-events: none;
+  z-index: 49;
+  display: none;
+  opacity: 0.35;
+}
+#parallax {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+.shell { position: relative; z-index: 1; }
+.fx-in { animation: fx-in 0.42s steps(2, end) both; }
+@keyframes fx-in {
+  0% { transform: translateX(-8px) skewX(-8deg); }
+  55% { transform: translateX(5px) skewX(4deg); }
+  100% { transform: none; }
+}
 @media (hover: hover) and (pointer: fine) {
-  body.fine .cursor, body.fine .cursor-dot { display: block; }
+  body.fine .cursor, body.fine .cursor-dot, body.fine .trail { display: block; }
   body.fine, body.fine a, body.fine button { cursor: none; }
   body.fine textarea, body.fine input, body.fine select { cursor: text; }
 }
@@ -494,11 +523,8 @@ a:hover { color: white; }
 .scenarios button:hover, .presets button:hover { border-color: var(--lime); color: var(--lime); }
 .banner {
   font-size: 13px;
-  color: var(--muted);
-  border: 1px dashed var(--line);
-  border-radius: 12px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
+  color: var(--dim);
+  margin: 0 0 10px;
 }
 .tape { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow: auto; }
 .tape article { border-left: 2px solid var(--line); padding: 4px 0 4px 10px; }
@@ -513,12 +539,12 @@ a:hover { color: white; }
 .prices { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--mono); font-size: 12px; color: var(--lime); }
 .flash {
   margin-top: 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(204, 255, 0, 0.08);
-  border: 1px solid var(--line);
+  padding: 4px 0 4px 10px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  background: none;
 }
-.flash.bad { background: rgba(255, 59, 92, 0.1); border-color: rgba(255, 59, 92, 0.5); }
+.flash.bad { border-left-color: var(--dim); color: var(--muted); }
 .stats { display: flex; gap: 12px; flex-wrap: wrap; font-family: var(--mono); font-size: 12px; color: var(--muted); }
 
 html.shake-up, html.shake-down { animation: shake 0.48s linear; }
@@ -574,11 +600,12 @@ html.shake-up, html.shake-down { animation: shake 0.48s linear; }
 }
 .token-copy h1 { font-size: clamp(72px, 14vw, 168px); }
 .token-about { padding-top: 24px; }
-.token-disclaimer {
-  border: 1px solid rgba(255, 59, 92, 0.55);
-  border-radius: 14px;
-  padding: 14px 16px;
-  color: #ffd0d8;
+.token-note {
+  margin: 56px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
 }
 .ca-card {
   margin-top: 28px;
@@ -605,7 +632,7 @@ html.shake-up, html.shake-down { animation: shake 0.48s linear; }
 
 @media (prefers-reduced-motion: reduce) {
   .grain { animation: none; }
-  .glitch::before, .glitch::after, .halo-ring, .eq i, html.shake-up, html.shake-down, .sound.waiting { animation: none; }
+  .glitch::before, .glitch::after, .halo-ring, .eq i, html.shake-up, html.shake-down, .sound.waiting, .fx-in { animation: none; }
   .card, .btn, .rung { transition: none; }
   .card:hover, .btn:hover, .rung.on { transform: none; }
 }

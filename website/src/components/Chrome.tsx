@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import { sound, type SoundState } from "../audio/sound.js";
 import { ImpactLayer } from "./Impact.js";
+import { Kinetic } from "./Kinetic.js";
 import { useSiteConfig } from "./SiteConfig.js";
 
 const LINKS = [
@@ -68,6 +69,13 @@ export function Chrome(): React.ReactElement {
       y += (ty - y) * 0.22;
       ring.style.transform = `translate3d(${x}px, ${y}px, 0)`;
       dot.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
+      const trails = document.querySelectorAll<HTMLElement>(".trail");
+      trails.forEach((el, i) => {
+        const k = (i + 1) * 0.18;
+        const px = x + (tx - x) * (1 - k);
+        const py = y + (ty - y) * (1 - k);
+        el.style.transform = `translate3d(${px}px, ${py}px, 0)`;
+      });
       frame = requestAnimationFrame(loop);
     };
     window.addEventListener("pointermove", move);
@@ -87,6 +95,10 @@ export function Chrome(): React.ReactElement {
       <div className="scan" aria-hidden="true" />
       <div className="cursor" aria-hidden="true" />
       <div className="cursor-dot" aria-hidden="true" />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="trail" aria-hidden="true" />
+      ))}
+      <Kinetic reduced={reduced} />
       <ImpactLayer />
       <header className="nav">
         <NavLink to="/" className="brand" data-magnet>
