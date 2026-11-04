@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  · <a href="https://haelobot.com">haelobot.com</a>
+  <a href="https://haelobot.com"><strong>haelobot.com</strong></a>
 </p>
 
 <p align="center">
