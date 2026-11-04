@@ -150,7 +150,7 @@ export const brokerSchema = z.discriminatedUnion("type", [
     ordersTool: z.string().optional(),
     taxLotsTool: z.string().optional(),
     cancelAllTool: z.string().optional(),
-    /** OAuth loopback port for `leash auth`. */
+    /** OAuth loopback port for `haelo auth`. */
     oauthPort: z.number().int().min(1024).max(65535).default(8765),
     /** Per-tool effect overrides, e.g. { "place_equity_order": "order_place" }. */
     toolOverrides: z.record(z.string(), z.enum(["read", "order_place", "order_cancel", "transfer", "blocked"])).default({}),
@@ -159,13 +159,13 @@ export const brokerSchema = z.discriminatedUnion("type", [
 
 export const configSchema = z.object({
   version: z.literal(1),
-  stateDir: z.string().default("~/.leash"),
+  stateDir: z.string().default("~/.haelo"),
   /**
    * Live trading is OFF unless you opt in here. While off, nothing is ever sent to a live account:
    * promotion to micro/standard is refused and approved proposals are not executed.
    */
   live: z.object({ enabled: z.boolean().default(false) }).default({ enabled: false }),
-  /** Where state and the audit chain live. `sqlite` = <stateDir>/leash.db (WAL, append-only triggers); `jsonl` = state.json + audit.jsonl. */
+  /** Where state and the audit chain live. `sqlite` = <stateDir>/haelo.db (WAL, append-only triggers); `jsonl` = state.json + audit.jsonl. */
   storage: z.object({ backend: z.enum(["sqlite", "jsonl"]).default("sqlite") }).default({ backend: "sqlite" }),
   /** Where OAuth tokens are kept. `auto` = OS keychain when available, else a 0600 file. */
   secrets: z.object({ store: z.enum(["auto", "keychain", "file"]).default("auto") }).default({ store: "auto" }),
@@ -198,7 +198,7 @@ export const configSchema = z.object({
   approvals: z
     .object({
       ttlSeconds: z.number().int().positive().default(900),
-      /** Local web approval UI (`leash approvals-ui`). Loopback only, bearer-token + CSRF protected. */
+      /** Local web approval UI (`haelo approvals-ui`). Loopback only, bearer-token + CSRF protected. */
       web: z.object({ host: z.string().default("127.0.0.1"), port: z.number().int().min(0).max(65535).default(8790) }).default({ host: "127.0.0.1", port: 8790 }),
     })
     .default({ ttlSeconds: 900, web: { host: "127.0.0.1", port: 8790 } }),
@@ -214,7 +214,7 @@ export const configSchema = z.object({
     .default({ enabled: true, windowCalls: 5, windowSeconds: 900, action: "block_and_demote" }),
   tools: z
     .object({
-      /** Pin the upstream tool list on first start. When false, `leash pin approve` is required before orders. `recheckSeconds: 0` re-checks before every order. */
+      /** Pin the upstream tool list on first start. When false, `haelo pin approve` is required before orders. `recheckSeconds: 0` re-checks before every order. */
       trustOnFirstUse: z.boolean().default(true),
       recheckSeconds: z.number().int().nonnegative().default(0),
     })
@@ -228,7 +228,7 @@ export const configSchema = z.object({
     .default({ host: "127.0.0.1", port: 8787 }),
 });
 
-export type LeashConfig = z.infer<typeof configSchema>;
+export type HaeloConfig = z.infer<typeof configSchema>;
 export type Rails = z.infer<typeof railsSchema>;
 export type Criteria = z.infer<typeof criteriaSchema>;
 export type BrokerConfig = z.infer<typeof brokerSchema>;

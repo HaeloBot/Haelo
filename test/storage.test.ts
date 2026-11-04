@@ -11,17 +11,17 @@ import { SqliteAuditLog, openDatabase } from "../src/storage/sqlite.js";
 
 const config = parseConfig(JSON.stringify({ version: 1, broker: { type: "alpaca" } }));
 const init = () => initialState(config, new Date("2026-11-04T00:00:00Z"));
-const dir = (): string => mkdtempSync(join(tmpdir(), "leash-db-"));
+const dir = (): string => mkdtempSync(join(tmpdir(), "haelo-db-"));
 
 describe("SQLite storage", () => {
-  it("creates leash.db with mode 600 and round-trips state", async () => {
+  it("creates haelo.db with mode 600 and round-trips state", async () => {
     const d = dir();
     const s = openStorage("sqlite", d, init);
     await s.store.update((x) => {
       x.ladder.stats.decisions = 3;
     });
     s.close();
-    expect(statMode(join(d, "leash.db"))).toBe(0o600);
+    expect(statMode(join(d, "haelo.db"))).toBe(0o600);
     const again = openStorage("sqlite", d, init);
     expect(again.store.load().ladder.stats.decisions).toBe(3);
     again.close();

@@ -9,13 +9,13 @@ afterEach(async () => {
 const order = (symbol: string, usd: number) => ({ account_number: "MOCK-AGENT-1", symbol, side: "buy", type: "market", notional: usd });
 
 describe("proxying an upstream MCP server (mock upstream over real Streamable HTTP)", () => {
-  it("lists upstream tools, hides transfers and unknown tools, adds Leash tools", async () => {
+  it("lists upstream tools, hides transfers and unknown tools, adds Haelo tools", async () => {
     h = await upstreamHarness();
     await h.core.callTool("get_portfolio");
     const names = h.core.toolDefs().map((t) => t.name);
     expect(names).toContain("get_portfolio");
     expect(names).toContain("place_equity_order");
-    expect(names).toContain("leash_status");
+    expect(names).toContain("haelo_status");
     expect(names).not.toContain("transfer_funds");
     expect(names).not.toContain("create_price_alert");
   });
@@ -110,11 +110,11 @@ describe("proxying an upstream MCP server (mock upstream over real Streamable HT
   it("the agent has no tool that can promote, approve, or change policy", async () => {
     h = await upstreamHarness();
     const names = h.core.toolDefs().map((t) => t.name);
-    expect(names.filter((n) => n.startsWith("leash_")).sort()).toEqual(
-      ["leash_explain_block", "leash_get_proposal", "leash_preflight", "leash_record_rationale", "leash_request_promotion", "leash_shadow_report", "leash_status"].sort(),
+    expect(names.filter((n) => n.startsWith("haelo_")).sort()).toEqual(
+      ["haelo_explain_block", "haelo_get_proposal", "haelo_preflight", "haelo_record_rationale", "haelo_request_promotion", "haelo_shadow_report", "haelo_status"].sort(),
     );
     for (const n of names) expect(n).not.toMatch(/approve|promote$|set_policy|demote/);
-    const req = await h.core.callTool("leash_request_promotion", {});
+    const req = await h.core.callTool("haelo_request_promotion", {});
     expect(h.core.status().rung).toBe("shadow"); // a request, never a promotion
     expect(req.isError).toBeFalsy();
   });

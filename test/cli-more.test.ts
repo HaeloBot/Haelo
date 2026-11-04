@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { run, type CliIo } from "../src/cli-main.js";
-import { createLeash } from "../src/factory.js";
+import { createHaelo } from "../src/factory.js";
 import { loadConfig } from "../src/policy/load.js";
 import { startMockUpstream, type RunningMockUpstream } from "../src/testkit/mock-upstream.js";
 
@@ -20,8 +20,8 @@ function io(cwd: string, env: NodeJS.ProcessEnv = {}): CliIo & { stdout: string;
 
 async function project(extra = ""): Promise<{ dir: string; cfg: string }> {
   up = await startMockUpstream();
-  const dir = mkdtempSync(join(tmpdir(), "leash-cli2-"));
-  const cfg = join(dir, "leash.yaml");
+  const dir = mkdtempSync(join(tmpdir(), "haelo-cli2-"));
+  const cfg = join(dir, "haelo.yaml");
   writeFileSync(cfg, `version: 1\nstateDir: ${join(dir, "state")}\nbroker:\n  type: mcp-upstream\n  url: ${up.url}\n  quoteTools: { equity: get_equity_quotes }\nagent: { accountId: MOCK-AGENT-1 }\nhousehold: { enabled: false }\nladder:\n  criteria:\n    shadow: { minDays: 0, minDecisions: 0 }\n${extra}`);
   return { dir, cfg };
 }
@@ -36,7 +36,7 @@ async function runUntil(argv: string[], o: ReturnType<typeof io>, ready: RegExp,
   return p;
 }
 
-describe("leash CLI: operating commands", () => {
+describe("haelo CLI: operating commands", () => {
   it("status (text), report, promote, demote, panic", async () => {
     const p = await project();
     const s = io(p.dir);
@@ -64,7 +64,7 @@ describe("leash CLI: operating commands", () => {
     expect(await run(["proposals", "--config", p.cfg], e)).toBe(0);
     expect(e.stdout).toContain("No proposals");
     writeFileSync(p.cfg, readFileSync(p.cfg, "utf8") + "  start: propose\n");
-    const core = createLeash(loadConfig(p.cfg), { env: {} });
+    const core = createHaelo(loadConfig(p.cfg), { env: {} });
     await core.init();
     await core.callTool("place_equity_order", { account_number: "MOCK-AGENT-1", symbol: "AAPL", side: "buy", type: "market", notional: 30 });
     const id = core.listProposals()[0]?.id as string;
@@ -93,7 +93,7 @@ describe("leash CLI: operating commands", () => {
     await run(["pin", "status", "--config", p.cfg], ps2);
     expect(ps2.stdout).toContain("no drift");
     up!.state.descriptionSuffix = " changed";
-    const core = createLeash(loadConfig(p.cfg), { env: {} });
+    const core = createHaelo(loadConfig(p.cfg), { env: {} });
     await core.init();
     await core.close();
     const ps3 = io(p.dir);
@@ -109,7 +109,7 @@ describe("leash CLI: operating commands", () => {
   });
 
   it("config errors are readable", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "leash-cli3-"));
+    const dir = mkdtempSync(join(tmpdir(), "haelo-cli3-"));
     const m = io(dir);
     expect(await run(["status"], m)).toBe(1);
     expect(m.stderr).toContain("Config not found");
@@ -126,13 +126,13 @@ describe("leash CLI: operating commands", () => {
   it("serve --http starts, serves /healthz, and stops on SIGINT", async () => {
     const p = await project();
     await run(["policy", "lock", "--config", p.cfg], io(p.dir));
-    const o = io(p.dir, { LEASH_HTTP_TOKEN: "cli-token-0123456789abcdef" });
+    const o = io(p.dir, { HAELO_HTTP_TOKEN: "cli-token-0123456789abcdef" });
     const code = await runUntil(["serve", "--http", "--port", "0", "--config", p.cfg], o, /serving http:\/\/127\.0\.0\.1:(\d+)\/mcp/, async () => {
       const port = /127\.0\.0\.1:(\d+)/.exec(o.stderr)?.[1];
       expect((await fetch(`http://127.0.0.1:${port}/healthz`)).status).toBe(200);
     });
     expect(code).toBe(0);
-    expect(o.stderr).toContain("LEASH_HTTP_TOKEN");
+    expect(o.stderr).toContain("HAELO_HTTP_TOKEN");
   });
 
   it("serve warns when the policy is not locked and accepts --allow-policy-change", async () => {
@@ -149,7 +149,7 @@ describe("leash CLI: operating commands", () => {
 
   it("approvals-ui starts with a login URL and stops on SIGINT", async () => {
     const p = await project("approvals:\n  web: { port: 0 }\n");
-    const o = io(p.dir, { LEASH_HTTP_TOKEN: "cli-token-0123456789abcdef" });
+    const o = io(p.dir, { HAELO_HTTP_TOKEN: "cli-token-0123456789abcdef" });
     const code = await runUntil(["approvals-ui", "--config", p.cfg], o, /login\?token=/, async () => {
       const url = /(http:\/\/127\.0\.0\.1:\d+\/login\?token=\S+)/.exec(o.stderr)?.[1] as string;
       const r = await fetch(url, { redirect: "manual" });

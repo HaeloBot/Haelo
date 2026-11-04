@@ -4,7 +4,7 @@
 src/
   cli.ts, cli-main.ts      CLI (human-only controls). cli-main is testable: run(argv, io)
   server/                  gateway.ts (per-request McpServer factory), http.ts, stdio.ts
-  core.ts                  LeashCore: the pipeline every tool call goes through
+  core.ts                  HaeloCore: the pipeline every tool call goes through
   classify.ts              tool name -> effect; tolerant order-intent extraction
   policy/                  schema.ts (zod), load.ts, evaluate.ts (pure)
   ladder.ts                rungs, promotion criteria, demotion targets
@@ -17,9 +17,9 @@ src/
   testkit/mock-upstream.ts test double broker MCP server (assumed shapes!)
 ```
 
-## One call, step by step (`LeashCore.callTool`)
+## One call, step by step (`HaeloCore.callTool`)
 
-1. `leash_*` tools are handled locally (status, preflight, propose, explain, rationale, shadow report, request promotion).
+1. `haelo_*` tools are handled locally (status, preflight, propose, explain, rationale, shadow report, request promotion).
 2. Refresh the upstream tool list (dynamic adapters only), compare its hash with the pin. Drift → freeze orders, demote, and serve the *pinned* definitions.
 3. Classify the tool: `read`, `order_place`, `order_cancel`, `transfer`, `unknown`. Transfer and unknown are blocked (and were never listed).
 4. **Read**: shadow rung returns the shadow ledger's account/positions/orders (so the agent's view is consistent with what it did); otherwise pass through. Text from third-party-text tools is scanned for injection; a hit opens a taint window and the result is wrapped with a warning.
@@ -29,7 +29,7 @@ src/
 ## Why these choices
 
 * **Pure evaluator.** `evaluateOrder` takes data and returns a verdict with `breach` (counts toward demotion) vs `soft` (counts as invalid) violations. Easy to test exhaustively and with property tests.
-* **Stateless MCP factory.** The v2 SDK builds an `McpServer` per request. Session-like state (the taint window) is keyed per transport and held in `LeashCore`.
+* **Stateless MCP factory.** The v2 SDK builds an `McpServer` per request. Session-like state (the taint window) is keyed per transport and held in `HaeloCore`.
 * **State is files, re-read every time.** The gateway and the CLI are separate processes. A lock directory (`state.lock`) serialises read-modify-write; the audit log re-reads its tail on append so both processes extend one chain.
 * **Rails only tighten down the ladder.** `effectiveRails()` takes the min of the rung override and the standard rail, so a typo cannot make `micro` looser than `standard`.
 * **Annotations are not trusted.** A server can label anything `readOnlyHint: true`.

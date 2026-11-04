@@ -6,7 +6,7 @@ import { listenForOAuthCallback, SecretOAuthProvider } from "../src/oauth.js";
 import { FileSecretStore, KeychainSecretStore, openSecretStore } from "../src/secrets.js";
 import { sha256 } from "../src/util.js";
 
-const dir = (): string => mkdtempSync(join(tmpdir(), "leash-sec-"));
+const dir = (): string => mkdtempSync(join(tmpdir(), "haelo-sec-"));
 
 /** In-memory stand-in for @napi-rs/keyring's Entry, to test the keychain code path deterministically. */
 function fakeKeyring(opts: { broken?: boolean } = {}): { Entry: new (s: string, a: string) => { getPassword(): string | null; setPassword(v: string): void; deletePassword(): boolean }; data: Map<string, string> } {
@@ -57,7 +57,7 @@ describe("secret stores", () => {
     expect(b.get("x")).toBe("2");
     a.delete("x");
     expect(a.get("x")).toBeUndefined();
-    expect([...k.data.keys()].every((key) => key.startsWith("leash-mcp/"))).toBe(true);
+    expect([...k.data.keys()].every((key) => key.startsWith("haelo-mcp/"))).toBe(true);
   });
 
   it("auto falls back to files when the keychain library is missing or the OS keychain does not work", () => {
@@ -79,10 +79,10 @@ describe("secret stores", () => {
   it("uses the real @napi-rs/keyring when this machine has a keychain (skipped otherwise)", () => {
     const s = openSecretStore("auto", dir());
     if (s.kind !== "keychain") return;
-    s.set("leash-test-real", "value");
-    expect(s.get("leash-test-real")).toBe("value");
-    s.delete("leash-test-real");
-    expect(s.get("leash-test-real")).toBeUndefined();
+    s.set("haelo-test-real", "value");
+    expect(s.get("haelo-test-real")).toBe("value");
+    s.delete("haelo-test-real");
+    expect(s.get("haelo-test-real")).toBeUndefined();
   });
 });
 

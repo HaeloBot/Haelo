@@ -11,43 +11,43 @@ afterEach(async () => {
 });
 const sc = (r: { structuredContent?: Record<string, unknown> }): Record<string, unknown> => r.structuredContent ?? {};
 
-describe("Leash's own agent tools", () => {
-  it("leash_status, leash_shadow_report and leash_preflight describe the situation without side effects", async () => {
+describe("Haelo's own agent tools", () => {
+  it("haelo_status, haelo_shadow_report and haelo_preflight describe the situation without side effects", async () => {
     h = await alpacaHarness({ rails: { maxOrderUsd: 100 } });
-    const st = sc(await h.core.callTool("leash_status"));
+    const st = sc(await h.core.callTool("haelo_status"));
     expect(st["rung"]).toBe("shadow");
     expect(st["injection_lock"]).toEqual({ active: false });
-    const pre = sc(await h.core.callTool("leash_preflight", { tool: "place_order", args: { symbol: "AAPL", side: "buy", notional_usd: 500 } }));
+    const pre = sc(await h.core.callTool("haelo_preflight", { tool: "place_order", args: { symbol: "AAPL", side: "buy", notional_usd: 500 } }));
     expect(pre["verdict"]).toBe("block");
     expect(pre["would_happen"]).toBe("refused");
-    const ok = sc(await h.core.callTool("leash_preflight", { tool: "place_order", args: { symbol: "AAPL", side: "buy", notional_usd: 50 } }));
+    const ok = sc(await h.core.callTool("haelo_preflight", { tool: "place_order", args: { symbol: "AAPL", side: "buy", notional_usd: 50 } }));
     expect(ok["would_happen"]).toBe("simulated fill");
-    expect(sc(await h.core.callTool("leash_preflight", { tool: "get_quote", args: {} }))["verdict"]).toBe("allow");
-    expect((await h.core.callTool("leash_preflight", { tool: "nope" })).isError).toBe(true);
+    expect(sc(await h.core.callTool("haelo_preflight", { tool: "get_quote", args: {} }))["verdict"]).toBe("allow");
+    expect((await h.core.callTool("haelo_preflight", { tool: "nope" })).isError).toBe(true);
     expect(h.core.status().stats.decisions).toBe(0); // preflight is not a decision
-    const rep = sc(await h.core.callTool("leash_shadow_report"));
+    const rep = sc(await h.core.callTool("haelo_shadow_report"));
     expect(rep["starting_cash"]).toBe(10_000);
   });
 
-  it("leash_explain_block and leash_record_rationale work from a decision id", async () => {
+  it("haelo_explain_block and haelo_record_rationale work from a decision id", async () => {
     h = await alpacaHarness({ rails: { maxOrderUsd: 100 } });
     const r = await h.core.callTool("place_order", { symbol: "AAPL", side: "buy", notional_usd: 500 });
     const id = String(sc(r)["decision_id"] ?? /decision_id[":= ]+([0-9a-f-]{36})/.exec(textOf(r))?.[1]);
-    const why = sc(await h.core.callTool("leash_explain_block", { decision_id: id }));
+    const why = sc(await h.core.callTool("haelo_explain_block", { decision_id: id }));
     expect(why["verdict"]).toBe("block");
-    expect((await h.core.callTool("leash_explain_block", { decision_id: "x" })).isError).toBe(true);
-    expect(sc(await h.core.callTool("leash_record_rationale", { decision_id: id, rationale: "testing caps" }))["recorded"]).toBe(true);
-    expect((await h.core.callTool("leash_record_rationale", {})).isError).toBe(true);
-    expect((await h.core.callTool("leash_nope")).isError).toBe(true);
+    expect((await h.core.callTool("haelo_explain_block", { decision_id: "x" })).isError).toBe(true);
+    expect(sc(await h.core.callTool("haelo_record_rationale", { decision_id: id, rationale: "testing caps" }))["recorded"]).toBe(true);
+    expect((await h.core.callTool("haelo_record_rationale", {})).isError).toBe(true);
+    expect((await h.core.callTool("haelo_nope")).isError).toBe(true);
   });
 
-  it("leash_propose_order forces a proposal; leash_get_proposal reports it", async () => {
+  it("haelo_propose_order forces a proposal; haelo_get_proposal reports it", async () => {
     h = await alpacaHarness({ ladder: { start: "propose" } });
-    const r = sc(await h.core.callTool("leash_propose_order", { symbol: "AAPL", side: "buy", notional_usd: 20, rationale: "why not" }));
+    const r = sc(await h.core.callTool("haelo_propose_order", { symbol: "AAPL", side: "buy", notional_usd: 20, rationale: "why not" }));
     expect(r["status"]).toBe("pending_approval");
-    const g = sc(await h.core.callTool("leash_get_proposal", { proposal_id: r["proposal_id"] }));
+    const g = sc(await h.core.callTool("haelo_get_proposal", { proposal_id: r["proposal_id"] }));
     expect(g["status"]).toBe("pending");
-    expect((await h.core.callTool("leash_get_proposal", { proposal_id: "nope" })).isError).toBe(true);
+    expect((await h.core.callTool("haelo_get_proposal", { proposal_id: "nope" })).isError).toBe(true);
     await h.core.declineProposal(String(r["proposal_id"]));
     await expect(h.core.approveProposal(String(r["proposal_id"]))).rejects.toThrow(/not pending/);
   });

@@ -8,7 +8,7 @@ import { createMockUpstreamServer, newMockUpstreamState } from "../../src/testki
 /**
  * An OAuth 2.1-protected MCP server for tests: protected-resource metadata (RFC 9728), authorization-server
  * metadata (RFC 8414), dynamic client registration (RFC 7591), authorization code + PKCE S256, refresh tokens.
- * It approves every authorization request (there is no user), so it tests Leash's client side, not a real IdP.
+ * It approves every authorization request (there is no user), so it tests Haelo's client side, not a real IdP.
  */
 export async function startOAuthUpstream(): Promise<{ base: string; mcpUrl: string; tokensIssued: () => number; close(): Promise<void> }> {
   const codes = new Map<string, { challenge: string; redirect: string; clientId: string }>();

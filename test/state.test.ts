@@ -8,7 +8,7 @@ import { StateStore } from "../src/state.js";
 
 describe("StateStore", () => {
   const config = parseConfig(JSON.stringify({ version: 1, broker: { type: "alpaca" } }));
-  const mk = () => new StateStore(mkdtempSync(join(tmpdir(), "leash-state-")), () => initialState(config, new Date("2026-11-04T00:00:00Z")));
+  const mk = () => new StateStore(mkdtempSync(join(tmpdir(), "haelo-state-")), () => initialState(config, new Date("2026-11-04T00:00:00Z")));
 
   it("persists updates and re-reads them from disk", async () => {
     const a = mk();

@@ -42,7 +42,7 @@ export class SecretOAuthProvider implements OAuthClientProvider {
     this.key = `oauth:${serverUrl}`;
     this.redirectUrl = `http://127.0.0.1:${port}/callback`;
     this.clientMetadata = {
-      client_name: "Leash (autonomy ladder gateway)",
+      client_name: "Haelo (autonomy ladder gateway)",
       redirect_uris: [this.redirectUrl],
       application_type: "native",
       grant_types: ["authorization_code", "refresh_token"],
@@ -116,7 +116,7 @@ export class SecretOAuthProvider implements OAuthClientProvider {
     this.save();
   }
   codeVerifier(): string {
-    if (!this.data.verifier) throw new Error("No PKCE code verifier saved; restart `leash auth`.");
+    if (!this.data.verifier) throw new Error("No PKCE code verifier saved; restart `haelo auth`.");
     return this.data.verifier;
   }
 }
@@ -138,7 +138,7 @@ export function listenForOAuthCallback(port: number, timeoutMs = 300_000): Callb
         return;
       }
       res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
-      res.end("Leash: authorization received. You can close this tab and return to the terminal.");
+      res.end("Haelo: authorization received. You can close this tab and return to the terminal.");
       if (timer) clearTimeout(timer);
       server?.close();
       resolvePromise(url.searchParams);

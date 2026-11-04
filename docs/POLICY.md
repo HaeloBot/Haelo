@@ -1,10 +1,10 @@
-# Policy reference (`leash.yaml`)
+# Policy reference (`haelo.yaml`)
 
-Secrets never go here. Config names the **environment variables** that hold them. Unknown or invalid fields are rejected with a readable error (`leash policy check` / startup). `leash policy lock` pins the file's SHA-256.
+Secrets never go here. Config names the **environment variables** that hold them. Unknown or invalid fields are rejected with a readable error (`haelo policy check` / startup). `haelo policy lock` pins the file's SHA-256.
 
 ```yaml
 version: 1
-stateDir: ~/.leash             # audit.jsonl, state.json, policy.lock, http-token, oauth/
+stateDir: ~/.haelo             # audit.jsonl, state.json, policy.lock, http-token, oauth/
 ```
 
 ## `live`
@@ -14,10 +14,10 @@ stateDir: ~/.leash             # audit.jsonl, state.json, policy.lock, http-toke
 ## `storage`
 
 `backend`: `sqlite` (default) or `jsonl`.
-- `sqlite` writes `<stateDir>/leash.db` (WAL; append-only triggers on the audit table).
+- `sqlite` writes `<stateDir>/haelo.db` (WAL; append-only triggers on the audit table).
 - `jsonl` writes `state.json` + `audit.jsonl`.
 - Switching from `jsonl` to `sqlite` imports the existing chain once.
-- `leash audit export` writes JSONL from either backend.
+- `haelo audit export` writes JSONL from either backend.
 
 ## `secrets`
 
@@ -29,7 +29,7 @@ stateDir: ~/.leash             # audit.jsonl, state.json, policy.lock, http-toke
 |---|---|
 | `alpaca` | `paperKeyIdEnv`, `paperSecretEnv`, `liveKeyIdEnv`, `liveSecretEnv` (env var names), `feed` (`iex`/`sip`/`delayed_sip`), `paperBaseUrl`, `liveBaseUrl`, `dataBaseUrl` |
 | `robinhood-crypto` | `apiKeyEnv`, `privateKeyEnv` (base64 Ed25519 seed), `apiVersion` (`v1`/`v2`), `baseUrl` |
-| `mcp-upstream` | exactly one of `url` / `command` (+`args`, `passEnv`); `bearerTokenEnv` (else OAuth for URLs, via `leash auth`); `oauthPort`; `quoteTools.{equity,crypto}`, `accountTool`, `positionsTool`, `ordersTool`, `taxLotsTool`, `cancelAllTool`; `toolOverrides: { tool: read\|order_place\|order_cancel\|transfer\|blocked }` |
+| `mcp-upstream` | exactly one of `url` / `command` (+`args`, `passEnv`); `bearerTokenEnv` (else OAuth for URLs, via `haelo auth`); `oauthPort`; `quoteTools.{equity,crypto}`, `accountTool`, `positionsTool`, `ordersTool`, `taxLotsTool`, `cancelAllTool`; `toolOverrides: { tool: read\|order_place\|order_cancel\|transfer\|blocked }` |
 
 ## `agent`
 
@@ -67,7 +67,7 @@ Violations are `breach` (hard rule: counts toward demotion) or `soft` (rate limi
 
 ## `approvals`
 
-`ttlSeconds` (900): proposals expire. `web: { host: 127.0.0.1, port: 8790 }`: the `leash approvals-ui` listener (loopback only).
+`ttlSeconds` (900): proposals expire. `web: { host: 127.0.0.1, port: 8790 }`: the `haelo approvals-ui` listener (loopback only).
 
 ## `injection`
 
@@ -75,7 +75,7 @@ Violations are `breach` (hard rule: counts toward demotion) or `soft` (rate limi
 
 ## `tools`
 
-`trustOnFirstUse` (true; false = a human must `leash pin approve` before orders), `recheckSeconds` (0 = check the upstream list before every order).
+`trustOnFirstUse` (true; false = a human must `haelo pin approve` before orders), `recheckSeconds` (0 = check the upstream list before every order).
 
 ## `household`
 
@@ -83,4 +83,4 @@ Violations are `breach` (hard rule: counts toward demotion) or `soft` (rate limi
 
 ## `http`
 
-`host` (`127.0.0.1`), `port` (8787). The token comes from `LEASH_HTTP_TOKEN` or `<stateDir>/http-token`.
+`host` (`127.0.0.1`), `port` (8787). The token comes from `HAELO_HTTP_TOKEN` or `<stateDir>/http-token`.

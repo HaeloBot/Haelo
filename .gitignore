@@ -7,9 +7,9 @@ coverage/
 !.env.example
 *.log
 .DS_Store
-# Local Leash state (audit log, tokens, policy lock). Never commit these.
-.leash/
+# Local Haelo state (audit log, tokens, policy lock). Never commit these.
+.haelo/
 http-token
 oauth/
-leash.db*
+haelo.db*
 secrets/

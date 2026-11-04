@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { AlpacaBroker } from "../../src/adapters/alpaca.js";
 import { RestAdapter } from "../../src/adapters/rest-base.js";
 import { AuditLog } from "../../src/audit.js";
-import { LeashCore } from "../../src/core.js";
+import { HaeloCore } from "../../src/core.js";
 import { parseConfig } from "../../src/policy/load.js";
-import type { LeashConfig } from "../../src/policy/schema.js";
+import type { HaeloConfig } from "../../src/policy/schema.js";
 import { StateStore } from "../../src/state.js";
 import { MOCK_ALPACA_CREDS, newMockAlpacaState, startMockAlpaca, type RunningMockAlpaca } from "./mock-alpaca.js";
 import type { BrokerAdapter } from "../../src/adapters/types.js";
@@ -23,10 +23,10 @@ export class Clock {
 }
 
 export interface Harness {
-  core: LeashCore;
+  core: HaeloCore;
   dir: string;
   clock: Clock;
-  config: LeashConfig;
+  config: HaeloConfig;
   paper?: RunningMockAlpaca;
   live?: RunningMockAlpaca;
   cleanup(): Promise<void>;
@@ -39,9 +39,9 @@ broker:
 ${extra}`;
 }
 
-/** A LeashCore wired to local mock Alpaca servers (paper and live) with a controllable clock. */
+/** A HaeloCore wired to local mock Alpaca servers (paper and live) with a controllable clock. */
 export async function alpacaHarness(overrides: Record<string, unknown> = {}): Promise<Harness> {
-  const dir = mkdtempSync(join(tmpdir(), "leash-test-"));
+  const dir = mkdtempSync(join(tmpdir(), "haelo-test-"));
   const clock = new Clock();
   const paper = await startMockAlpaca(newMockAlpacaState());
   const live = await startMockAlpaca(newMockAlpacaState());
@@ -72,9 +72,9 @@ export async function alpacaHarness(overrides: Record<string, unknown> = {}): Pr
       now: clock.now,
     }),
   );
-  const store = new StateStore(dir, LeashCore.initialStateFactory(config, clock.now));
+  const store = new StateStore(dir, HaeloCore.initialStateFactory(config, clock.now));
   const audit = new AuditLog(join(dir, "audit.jsonl"), clock.now);
-  const core = new LeashCore({ config, adapter, store, audit, now: clock.now });
+  const core = new HaeloCore({ config, adapter, store, audit, now: clock.now });
   await core.init();
   return {
     core,

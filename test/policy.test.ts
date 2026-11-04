@@ -114,7 +114,7 @@ describe("property tests", () => {
 
 describe("config validation", () => {
   it("rejects unknown broker types and bad numbers with readable errors", () => {
-    expect(() => parseConfig("version: 1\nbroker: { type: nope }")).toThrow(/Invalid leash config/);
+    expect(() => parseConfig("version: 1\nbroker: { type: nope }")).toThrow(/Invalid haelo config/);
     expect(() => parseConfig(JSON.stringify({ version: 1, broker: { type: "alpaca" }, rails: { maxOrderUsd: -1 } }))).toThrow(/maxOrderUsd/);
   });
   it("requires exactly one of url or command for an upstream", () => {

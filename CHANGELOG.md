@@ -3,12 +3,12 @@
 ## 0.2.0
 
 * **Live opt-in.** `live.enabled: false` by default. Without it, live rungs cannot be configured, promoted into or executed.
-* **`leash doctor [--live]`.** Read-only preflight covering config, policy lock, permissions, storage, the audit chain and the secret store. It also checks Alpaca paper/live accounts and market data, Robinhood Crypto signed requests, and upstream MCP connect/tools/configured names/OAuth state. New `docs/GO_LIVE.md` checklist.
-* **SQLite storage** (default) for state and the audit chain via `node:sqlite`, with append-only triggers. It imports from JSONL once, and `leash audit export` writes JSONL that `leash audit verify --file` accepts.
+* **`haelo doctor [--live]`.** Read-only preflight covering config, policy lock, permissions, storage, the audit chain and the secret store. It also checks Alpaca paper/live accounts and market data, Robinhood Crypto signed requests, and upstream MCP connect/tools/configured names/OAuth state. New `docs/GO_LIVE.md` checklist.
+* **SQLite storage** (default) for state and the audit chain via `node:sqlite`, with append-only triggers. It imports from JSONL once, and `haelo audit export` writes JSONL that `haelo audit verify --file` accepts.
 * **OS keychain** token storage via `@napi-rs/keyring`, with a 0600 file fallback and migration from 0.1 token files.
-* **Local web approvals UI** (`leash approvals-ui`): loopback only, token login to an HttpOnly cookie, CSRF, typed confirmation, strict CSP.
+* **Local web approvals UI** (`haelo approvals-ui`): loopback only, token login to an HttpOnly cookie, CSRF, typed confirmation, strict CSP.
 * The account wall is now enforced even when household checks are off.
-* `leash mock-upstream --stdio`.
+* `haelo mock-upstream --stdio`.
 * Tests went from 160 to 240+. Coverage thresholds are enforced in CI (lines ≥ 90%). There is an end-to-end OAuth 2.1 + PKCE test against a local mock IdP.
 * `npm audit` is clean, including dev dependencies (minimatch override). Node ≥ 22.13.
 

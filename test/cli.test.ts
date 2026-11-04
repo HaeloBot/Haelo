@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { run, type CliIo } from "../src/cli-main.js";
 import { parseConfig } from "../src/policy/load.js";
 import { configTemplate } from "../src/templates.js";
-import { createLeash } from "../src/factory.js";
+import { createHaelo } from "../src/factory.js";
 import { loadConfig } from "../src/policy/load.js";
 import { startMockUpstream, type RunningMockUpstream } from "../src/testkit/mock-upstream.js";
 
@@ -33,14 +33,14 @@ function io(cwd: string, env: NodeJS.ProcessEnv = {}): CliIo & { stdout: string;
 
 async function project(): Promise<{ dir: string; cfg: string; state: string }> {
   up = await startMockUpstream();
-  const dir = mkdtempSync(join(tmpdir(), "leash-cli-"));
+  const dir = mkdtempSync(join(tmpdir(), "haelo-cli-"));
   const state = join(dir, "state");
-  const cfg = join(dir, "leash.yaml");
+  const cfg = join(dir, "haelo.yaml");
   writeFileSync(cfg, `version: 1\nstateDir: ${state}\nbroker:\n  type: mcp-upstream\n  url: ${up.url}\n  accountTool: get_portfolio\n  quoteTools: { equity: get_equity_quotes }\nagent: { accountId: MOCK-AGENT-1 }\nhousehold: { enabled: false }\n`);
   return { dir, cfg, state };
 }
 
-describe("leash CLI", () => {
+describe("haelo CLI", () => {
   it("prints help and version", async () => {
     const i = io(tmpdir());
     expect(await run(["--help"], i)).toBe(0);
@@ -55,10 +55,10 @@ describe("leash CLI", () => {
   });
 
   it("init writes a valid config, creates a 0600 http token, and refuses to overwrite", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "leash-init-"));
+    const dir = mkdtempSync(join(tmpdir(), "haelo-init-"));
     const i = io(dir);
     expect(await run(["init", "--broker", "mock", "--state-dir", join(dir, "st")], i)).toBe(0);
-    expect(existsSync(join(dir, "leash.yaml"))).toBe(true);
+    expect(existsSync(join(dir, "haelo.yaml"))).toBe(true);
     expect(statSync(join(dir, "st", "http-token")).mode & 0o777).toBe(0o600);
     const again = io(dir);
     expect(await run(["init", "--broker", "mock"], again)).toBe(1);
@@ -103,7 +103,7 @@ describe("leash CLI", () => {
     const p = await project();
     const cfg = readFileSync(p.cfg, "utf8") + "live: { enabled: true }\nladder:\n  start: propose\n";
     writeFileSync(p.cfg, cfg);
-    const core = createLeash(loadConfig(p.cfg), { env: {} });
+    const core = createHaelo(loadConfig(p.cfg), { env: {} });
     await core.init();
     const r = await core.callTool("place_equity_order", { account_number: "MOCK-AGENT-1", symbol: "AAPL", side: "buy", type: "market", notional: 60 });
     await core.close();
@@ -122,7 +122,7 @@ describe("leash CLI", () => {
   it("refuses to execute an approved proposal while live trading is disabled (the default)", async () => {
     const p = await project();
     writeFileSync(p.cfg, readFileSync(p.cfg, "utf8") + "ladder:\n  start: propose\n");
-    const core = createLeash(loadConfig(p.cfg), { env: {} });
+    const core = createHaelo(loadConfig(p.cfg), { env: {} });
     await core.init();
     await core.callTool("place_equity_order", { account_number: "MOCK-AGENT-1", symbol: "AAPL", side: "buy", type: "market", notional: 60 });
     const id = core.listProposals()[0]?.id as string;
@@ -136,13 +136,13 @@ describe("leash CLI", () => {
   it("audit verify detects tampering in the SQLite store, even with the append-only triggers dropped", async () => {
     const p = await project();
     await run(["policy", "lock", "--config", p.cfg], io(p.dir));
-    const core = createLeash(loadConfig(p.cfg), { env: {} });
+    const core = createHaelo(loadConfig(p.cfg), { env: {} });
     await core.init();
     await core.callTool("get_portfolio");
     await core.close();
     expect(await run(["audit", "verify", "--config", p.cfg], io(p.dir))).toBe(0);
     const { DatabaseSync } = await import("node:sqlite");
-    const db = new DatabaseSync(join(p.state, "leash.db"));
+    const db = new DatabaseSync(join(p.state, "haelo.db"));
     expect(() => db.exec("UPDATE audit SET type = 'edit' WHERE type = 'read'")).toThrow(/append-only/);
     expect(() => db.exec("DELETE FROM audit")).toThrow(/append-only/);
     db.exec("DROP TRIGGER audit_no_update");
@@ -172,7 +172,7 @@ describe("leash CLI", () => {
     const p = await project();
     writeFileSync(p.cfg, readFileSync(p.cfg, "utf8") + "storage: { backend: jsonl }\n");
     await run(["policy", "lock", "--config", p.cfg], io(p.dir));
-    const core = createLeash(loadConfig(p.cfg), { env: {} });
+    const core = createHaelo(loadConfig(p.cfg), { env: {} });
     await core.init();
     await core.callTool("get_portfolio");
     await core.close();

@@ -1,5 +1,5 @@
 {
-  "name": "leash-mcp",
+  "name": "haelo-mcp",
   "version": "0.2.0",
   "description": "Autonomy ladder gateway for AI trading agents: an MCP server that earns agents more freedom (shadow, paper, propose, micro, standard) and demotes them automatically.",
   "license": "MIT",
@@ -9,7 +9,7 @@
     "node": ">=22.13"
   },
   "bin": {
-    "leash": "dist/cli.js"
+    "haelo": "dist/cli.js"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,7 +27,7 @@
     "README.md",
     "LICENSE",
     "SECURITY.md",
-    "leash.example.yaml"
+    "haelo.example.yaml"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -69,7 +69,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OWNER/leash.git"
+    "url": "git+https://github.com/OWNER/haelo.git"
   },
   "overrides": {
     "minimatch": "^11.0.4"

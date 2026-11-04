@@ -2,7 +2,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { localhostHostValidation, localhostOriginValidation, toNodeHandler } from "@modelcontextprotocol/node";
-import type { LeashCore } from "../core.js";
+import type { HaeloCore } from "../core.js";
 import { createServerFactory } from "./gateway.js";
 import { safeEqual } from "../util.js";
 
@@ -27,7 +27,7 @@ const LOOPBACK = new Set(["127.0.0.1", "::1", "localhost"]);
  * Streamable HTTP endpoint at /mcp. Defence in depth for a local server that can move money:
  * loopback bind by default, Host and Origin validation (stops DNS rebinding), and a mandatory bearer token.
  */
-export async function startHttp(core: LeashCore, opts: HttpOptions): Promise<RunningHttp> {
+export async function startHttp(core: HaeloCore, opts: HttpOptions): Promise<RunningHttp> {
   if (!opts.token || opts.token.length < 16) throw new Error("HTTP token must be at least 16 characters.");
   if (!LOOPBACK.has(opts.host) && !opts.allowRemote) {
     throw new Error(`Refusing to bind ${opts.host}: not a loopback address. Pass --allow-remote if you really mean it (a bearer token is still required).`);
@@ -52,7 +52,7 @@ export async function startHttp(core: LeashCore, opts: HttpOptions): Promise<Run
     const auth = req.headers.authorization ?? "";
     const m = /^Bearer (.+)$/i.exec(auth);
     if (!m || !safeEqual(m[1] as string, opts.token)) {
-      res.writeHead(401, { "content-type": "application/json", "www-authenticate": 'Bearer realm="leash"' }).end(JSON.stringify({ error: "missing or invalid bearer token" }));
+      res.writeHead(401, { "content-type": "application/json", "www-authenticate": 'Bearer realm="haelo"' }).end(JSON.stringify({ error: "missing or invalid bearer token" }));
       return;
     }
     void nodeHandler(req, res);

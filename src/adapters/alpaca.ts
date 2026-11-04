@@ -116,7 +116,7 @@ export class AlpacaBroker implements RestBroker {
     return { symbol, bid: round(p * (1 - spread / 2), 6), ask: round(p * (1 + spread / 2), 6), mid: p, ts: tr.trade?.t ?? (this.o.now?.() ?? new Date()).toISOString() };
   }
 
-  /** Raw account flags for `leash doctor`: is the account active and allowed to trade? */
+  /** Raw account flags for `haelo doctor`: is the account active and allowed to trade? */
   async accountStatus(mode: BrokerMode): Promise<{ status: string; tradingBlocked: boolean; accountBlocked: boolean; patternDayTrader: boolean; accountNumber: string }> {
     const a = (await this.trading(mode, "GET", "/v2/account")) as Record<string, unknown>;
     return {

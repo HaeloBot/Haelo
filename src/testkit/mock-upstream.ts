@@ -5,7 +5,7 @@ import { McpServer, createMcpHandler } from "@modelcontextprotocol/server";
 import { localhostHostValidation, toNodeHandler } from "@modelcontextprotocol/node";
 
 /**
- * A local MCP server shaped like a broker's agent-trading MCP. It exists so Leash can be run and tested end to end
+ * A local MCP server shaped like a broker's agent-trading MCP. It exists so Haelo can be run and tested end to end
  * with no broker account. IMPORTANT: tool names follow Robinhood's public documentation in spirit, but the argument
  * and response shapes here are ASSUMPTIONS, because Robinhood does not publish them. This is a test double, not a
  * model of Robinhood. Replace it with golden fixtures captured from a real account when you have them.

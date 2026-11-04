@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { AuditLog, GENESIS_HASH, verifyFile } from "../src/audit.js";
 
 function tmp(): string {
-  return join(mkdtempSync(join(tmpdir(), "leash-audit-")), "audit.jsonl");
+  return join(mkdtempSync(join(tmpdir(), "haelo-audit-")), "audit.jsonl");
 }
 
 describe("hash-chained audit log", () => {

@@ -1,11 +1,11 @@
 # Contributing
 
-Thanks for helping. Leash is safety-critical in a narrow sense (it sits between an agent and money), so the bar is: **every behaviour has a test, and nothing claims to be verified unless it is.**
+Thanks for helping. Haelo is safety-critical in a narrow sense (it sits between an agent and money), so the bar is: **every behaviour has a test, and nothing claims to be verified unless it is.**
 
 ## Setup
 
 ```bash
-git clone https://github.com/OWNER/leash && cd leash
+git clone https://github.com/OWNER/haelo && cd haelo
 npm ci
 npm run lint && npm run typecheck && npm test
 npm run test:coverage   # CI fails below 90% lines

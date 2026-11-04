@@ -1,4 +1,4 @@
-import type { LeashConfig, Rails } from "./schema.js";
+import type { HaeloConfig, Rails } from "./schema.js";
 import type { OrderIntent, Rung } from "../types.js";
 
 /** Counters the evaluator needs. Supplied by the caller so evaluation stays a pure function. */
@@ -12,7 +12,7 @@ export interface UsageSnapshot {
 }
 
 export interface EvalInput {
-  config: LeashConfig;
+  config: HaeloConfig;
   rung: Rung;
   intent: OrderIntent;
   /** Order value in USD. Undefined means it could not be sized, which is refused. */
@@ -38,7 +38,7 @@ export interface EvalResult {
 }
 
 /** Rails for a rung: the standard rails, tightened (never loosened) by the rung's overrides. */
-export function effectiveRails(config: LeashConfig, rung: Rung): Rails {
+export function effectiveRails(config: HaeloConfig, rung: Rung): Rails {
   const base = config.rails;
   const ov = rung === "standard" ? {} : (config.rungs[rung] ?? {});
   const minDef = (a: number, b: number | undefined): number => (b === undefined ? a : Math.min(a, b));

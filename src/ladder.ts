@@ -1,4 +1,4 @@
-import type { Criteria, LeashConfig } from "./policy/schema.js";
+import type { Criteria, HaeloConfig } from "./policy/schema.js";
 import { RUNGS, rungIndex, type Rung } from "./types.js";
 import type { PersistedState, RungStats } from "./state.js";
 import { newShadowState } from "./shadow.js";
@@ -16,7 +16,7 @@ export function freshStats(now: Date, equity?: number): RungStats {
   };
 }
 
-export function initialState(config: LeashConfig, now: Date): PersistedState {
+export function initialState(config: HaeloConfig, now: Date): PersistedState {
   return {
     version: 1,
     ladder: { rung: config.ladder.start, since: now.toISOString(), stats: freshStats(now), history: [] },
@@ -61,7 +61,7 @@ export interface PromotionReport {
  * deliberately about behaviour (rule adherence, invalid rate, injection follow-through, drawdown), because
  * a good shadow return is weak evidence about future live results.
  */
-export function evaluatePromotion(config: LeashConfig, state: PersistedState, supportsPaper: boolean, now: Date, extra: { toolDrift: boolean }): PromotionReport {
+export function evaluatePromotion(config: HaeloConfig, state: PersistedState, supportsPaper: boolean, now: Date, extra: { toolDrift: boolean }): PromotionReport {
   const from = state.ladder.rung;
   const to = nextRung(from, supportsPaper);
   const checks: PromotionCheck[] = [];
@@ -91,7 +91,7 @@ export function evaluatePromotion(config: LeashConfig, state: PersistedState, su
 export type DemotionTrigger = "breach" | "drawdown" | "tool_drift" | "injection_follow" | "manual" | "panic";
 
 /** Target rung for a demotion. Never moves the agent UP, and never below the first usable rung. */
-export function demotionTarget(config: LeashConfig, current: Rung, trigger: DemotionTrigger, supportsPaper: boolean): Rung {
+export function demotionTarget(config: HaeloConfig, current: Rung, trigger: DemotionTrigger, supportsPaper: boolean): Rung {
   const d = config.ladder.demotion;
   let target: Rung;
   switch (trigger) {

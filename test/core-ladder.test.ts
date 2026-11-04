@@ -19,7 +19,7 @@ describe("autonomy ladder on Alpaca (mock servers)", () => {
     expect(h.paper?.state.orders).toHaveLength(0);
     // The agent sees its shadow account, not the broker's.
     const acct = await h.core.callTool("get_account");
-    expect(acct.structuredContent?.["id"]).toBe("leash-shadow");
+    expect(acct.structuredContent?.["id"]).toBe("haelo-shadow");
     expect(Number(acct.structuredContent?.["cash"])).toBeCloseTo(9900, 0);
     const pos = await h.core.callTool("get_positions");
     expect((pos.structuredContent?.["positions"] as unknown[]).length).toBe(1);
@@ -68,7 +68,7 @@ describe("autonomy ladder on Alpaca (mock servers)", () => {
     h.clock.advance(61_000);
     await h.core.callTool("place_order", buy("MSFT", 50));
     h.clock.days(2);
-    const req = await h.core.callTool("leash_request_promotion");
+    const req = await h.core.callTool("haelo_request_promotion");
     expect(req.structuredContent?.["eligible"]).toBe(true);
     expect(req.structuredContent?.["auto_promoted"]).toBe(false); // the agent can ask, never promote
     expect(h.core.status().rung).toBe("shadow");
@@ -89,12 +89,12 @@ describe("autonomy ladder on Alpaca (mock servers)", () => {
     expect(r.structuredContent?.["status"]).toBe("pending_approval");
     expect(h.live?.state.orders).toHaveLength(0);
     const id = r.structuredContent?.["proposal_id"] as string;
-    const polled = await h.core.callTool("leash_get_proposal", { proposal_id: id });
+    const polled = await h.core.callTool("haelo_get_proposal", { proposal_id: id });
     expect(polled.structuredContent?.["status"]).toBe("pending");
     const done = await h.core.approveProposal(id);
     expect(done.status).toBe("executed");
     expect(h.live?.state.orders).toHaveLength(1);
-    const after = await h.core.callTool("leash_get_proposal", { proposal_id: id });
+    const after = await h.core.callTool("haelo_get_proposal", { proposal_id: id });
     expect(after.structuredContent?.["status"]).toBe("executed");
   });
 
@@ -171,10 +171,10 @@ describe("autonomy ladder on Alpaca (mock servers)", () => {
   it("has no tool the agent can use to promote, demote, approve or change policy", async () => {
     h = await alpacaHarness();
     const names = h.core.toolDefs().map((t) => t.name);
-    for (const banned of ["promote", "demote", "approve", "set_policy", "panic", "leash_promote", "leash_approve", "leash_set_policy"]) {
+    for (const banned of ["promote", "demote", "approve", "set_policy", "panic", "haelo_promote", "haelo_approve", "haelo_set_policy"]) {
       expect(names).not.toContain(banned);
     }
-    const r = await h.core.callTool("leash_promote");
+    const r = await h.core.callTool("haelo_promote");
     expect(r.isError).toBe(true);
   });
 

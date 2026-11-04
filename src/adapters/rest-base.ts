@@ -34,7 +34,7 @@ export const NATIVE_TOOLS: ToolDef[] = [
   {
     name: "place_order",
     description:
-      "Place an order. Orders are routed through the Leash autonomy ladder: depending on the current rung they may be simulated, sent to a paper account, held for human approval, or sent live under caps. Give either qty or notional_usd, not both.",
+      "Place an order. Orders are routed through the Haelo autonomy ladder: depending on the current rung they may be simulated, sent to a paper account, held for human approval, or sent live under caps. Give either qty or notional_usd, not both.",
     inputSchema: {
       type: "object",
       properties: {

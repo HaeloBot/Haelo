@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { atomicWriteJson, sha256 } from "./util.js";
 
-/** Where Leash keeps long-lived secrets it creates itself (OAuth tokens for an upstream MCP server). */
+/** Where Haelo keeps long-lived secrets it creates itself (OAuth tokens for an upstream MCP server). */
 export interface SecretStore {
   readonly kind: "keychain" | "file";
   get(key: string): string | undefined;
@@ -11,7 +11,7 @@ export interface SecretStore {
   delete(key: string): void;
 }
 
-const SERVICE = "leash-mcp";
+const SERVICE = "haelo-mcp";
 
 interface KeyringEntry {
   getPassword(): string | null | undefined;

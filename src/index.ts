@@ -1,6 +1,6 @@
 export { VERSION } from "./version.js";
 export * from "./types.js";
-export { configSchema, type LeashConfig, type Rails, type Criteria } from "./policy/schema.js";
+export { configSchema, type HaeloConfig, type Rails, type Criteria } from "./policy/schema.js";
 export { loadConfig, parseConfig, expandHome, type LoadedConfig } from "./policy/load.js";
 export { evaluateOrder, effectiveRails, isBreach, type EvalInput, type EvalResult, type UsageSnapshot, type Violation } from "./policy/evaluate.js";
 export { householdChecks, type PreflightCheck } from "./household.js";
@@ -16,8 +16,8 @@ export { openSecretStore, FileSecretStore, KeychainSecretStore, type SecretStore
 export { SecretOAuthProvider } from "./oauth.js";
 export { runDoctor, formatDoctor, type DoctorCheck } from "./doctor.js";
 export { startApprovalsUi, type RunningApprovalsUi } from "./server/approvals-ui.js";
-export { LeashCore, LEASH_TOOLS, RUNG_DESCRIPTIONS, type Session, type StatusReport } from "./core.js";
-export { createLeash, buildAdapter } from "./factory.js";
+export { HaeloCore, HAELO_TOOLS, RUNG_DESCRIPTIONS, type Session, type StatusReport } from "./core.js";
+export { createHaelo, buildAdapter } from "./factory.js";
 export { createServerFactory } from "./server/gateway.js";
 export { startHttp, type RunningHttp } from "./server/http.js";
 export { startStdio } from "./server/stdio.js";

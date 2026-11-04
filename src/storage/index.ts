@@ -14,7 +14,7 @@ export interface Storage {
 }
 
 /**
- * Open the configured storage. `sqlite` (default) keeps state and the audit chain in `<stateDir>/leash.db`;
+ * Open the configured storage. `sqlite` (default) keeps state and the audit chain in `<stateDir>/haelo.db`;
  * `jsonl` keeps `state.json` + `audit.jsonl`. When switching to SQLite with an existing JSONL log, the old
  * chain is imported once so history is not lost (and stays verifiable: hashes are identical).
  */
@@ -22,7 +22,7 @@ export function openStorage(backend: StorageBackend, stateDir: string, init: () 
   if (backend === "jsonl") {
     return { backend, store: new StateStore(stateDir, init), audit: new AuditLog(join(stateDir, "audit.jsonl"), now), close: () => undefined };
   }
-  const file = join(stateDir, "leash.db");
+  const file = join(stateDir, "haelo.db");
   const db = openDatabase(file);
   const audit = new SqliteAuditLog(db, file, now);
   const store = new SqliteStateStore(db, file, init);

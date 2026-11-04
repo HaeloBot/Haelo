@@ -1,14 +1,14 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLeash } from "../../src/factory.js";
-import type { LeashCore } from "../../src/core.js";
+import { createHaelo } from "../../src/factory.js";
+import type { HaeloCore } from "../../src/core.js";
 import { parseConfig } from "../../src/policy/load.js";
 import { newMockUpstreamState, startMockUpstream, type MockUpstreamState, type RunningMockUpstream } from "../../src/testkit/mock-upstream.js";
 import { Clock } from "./harness.js";
 
 export interface UpstreamHarness {
-  core: LeashCore;
+  core: HaeloCore;
   upstream: RunningMockUpstream;
   state: MockUpstreamState;
   dir: string;
@@ -25,9 +25,9 @@ function deepMerge(a: Record<string, unknown>, b: Record<string, unknown>): Reco
   return out;
 }
 
-/** A LeashCore proxying the local mock upstream MCP server over real Streamable HTTP. */
+/** A HaeloCore proxying the local mock upstream MCP server over real Streamable HTTP. */
 export async function upstreamHarness(overrides: Record<string, unknown> = {}): Promise<UpstreamHarness> {
-  const dir = mkdtempSync(join(tmpdir(), "leash-up-"));
+  const dir = mkdtempSync(join(tmpdir(), "haelo-up-"));
   const clock = new Clock();
   const state = newMockUpstreamState();
   const upstream = await startMockUpstream({ state });
@@ -46,7 +46,7 @@ export async function upstreamHarness(overrides: Record<string, unknown> = {}): 
     ),
   );
   const config = parseConfig(raw);
-  const core = createLeash({ config, hash: "test", path: join(dir, "leash.yaml"), stateDir: dir }, { now: clock.now, env: {} });
+  const core = createHaelo({ config, hash: "test", path: join(dir, "haelo.yaml"), stateDir: dir }, { now: clock.now, env: {} });
   await core.init();
   return {
     core,

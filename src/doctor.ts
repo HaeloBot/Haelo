@@ -47,8 +47,8 @@ export async function runDoctor(l: LoadedConfig, opts: DoctorOptions): Promise<D
   const lockF = join(l.stateDir, "policy.lock");
   if (existsSync(lockF)) {
     const locked = (JSON.parse(readFileSync(lockF, "utf8")) as { hash: string }).hash;
-    add("local", "policy lock", locked === l.hash ? "pass" : "fail", locked === l.hash ? "policy matches the lock" : "policy changed since it was locked: review, then `leash policy lock`");
-  } else add("local", "policy lock", opts.live ? "fail" : "warn", "policy is not locked (`leash policy lock`)");
+    add("local", "policy lock", locked === l.hash ? "pass" : "fail", locked === l.hash ? "policy matches the lock" : "policy changed since it was locked: review, then `haelo policy lock`");
+  } else add("local", "policy lock", opts.live ? "fail" : "warn", "policy is not locked (`haelo policy lock`)");
   if (existsSync(l.stateDir)) {
     const mode = statSync(l.stateDir).mode & 0o777;
     add("local", "state dir permissions", mode & 0o077 ? "warn" : "pass", `${l.stateDir} is ${mode.toString(8)}${mode & 0o077 ? " (should be 700: chmod 700)" : ""}`);
@@ -67,7 +67,7 @@ export async function runDoctor(l: LoadedConfig, opts: DoctorOptions): Promise<D
     add("local", "storage", "fail", errorMessage(e));
   }
   const tokFile = join(l.stateDir, "http-token");
-  if (env["LEASH_HTTP_TOKEN"]) add("local", "http token", env["LEASH_HTTP_TOKEN"].length >= 16 ? "pass" : "fail", "from LEASH_HTTP_TOKEN");
+  if (env["HAELO_HTTP_TOKEN"]) add("local", "http token", env["HAELO_HTTP_TOKEN"].length >= 16 ? "pass" : "fail", "from HAELO_HTTP_TOKEN");
   else if (existsSync(tokFile)) add("local", "http token", (statSync(tokFile).mode & 0o077) === 0 ? "pass" : "warn", `${tokFile} (mode ${(statSync(tokFile).mode & 0o777).toString(8)})`);
   else add("local", "http token", "warn", "none yet (created on first `serve --http`)");
   try {
@@ -136,7 +136,7 @@ export async function runDoctor(l: LoadedConfig, opts: DoctorOptions): Promise<D
     let oauth: SecretOAuthProvider | undefined;
     if (b.url && !bearer) {
       oauth = new SecretOAuthProvider(openSecretStore(cfg.secrets.store, l.stateDir), l.stateDir, b.url, b.oauthPort, () => undefined);
-      add("upstream", "oauth tokens", oauth.hasTokens() ? "pass" : "fail", oauth.hasTokens() ? `stored (${oauth.storeKind})` : "not signed in: run `leash auth`");
+      add("upstream", "oauth tokens", oauth.hasTokens() ? "pass" : "fail", oauth.hasTokens() ? `stored (${oauth.storeKind})` : "not signed in: run `haelo auth`");
     }
     const ad = new McpUpstreamAdapter({
       ...(b.url ? { url: b.url } : {}),
@@ -177,7 +177,7 @@ export async function runDoctor(l: LoadedConfig, opts: DoctorOptions): Promise<D
 
   // ---- go-live readiness
   if (opts.live) {
-    add("live", "live.enabled", cfg.live.enabled ? "pass" : "fail", cfg.live.enabled ? "live trading opted in" : "set live: { enabled: true } in leash.yaml, then `leash policy lock`");
+    add("live", "live.enabled", cfg.live.enabled ? "pass" : "fail", cfg.live.enabled ? "live trading opted in" : "set live: { enabled: true } in haelo.yaml, then `haelo policy lock`");
     add("live", "agent.accountId", cfg.agent.accountId ? "pass" : "warn", cfg.agent.accountId ? `account wall: ${cfg.agent.accountId}` : "no account wall set; set agent.accountId to the dedicated agent account");
     add("live", "micro caps", cfg.rungs.micro.maxOrderUsd !== undefined && cfg.rungs.micro.maxOrderUsd <= 100 ? "pass" : "warn", `micro maxOrderUsd ${cfg.rungs.micro.maxOrderUsd ?? cfg.rails.maxOrderUsd}`);
     add("live", "auto-promotion", cfg.ladder.autoPromote.enabled && ["micro", "standard"].includes(cfg.ladder.autoPromote.maxRung) ? "warn" : "pass", cfg.ladder.autoPromote.enabled ? `auto-promote up to ${cfg.ladder.autoPromote.maxRung}` : "humans promote");

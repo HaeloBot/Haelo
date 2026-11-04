@@ -1,12 +1,19 @@
-# Leash policy. Read docs/POLICY.md for every field.
-# Lock it once you are happy: `leash policy lock`. The gateway then refuses to start if this file changes.
+# Haelo policy. Read docs/POLICY.md for every field.
+# Lock it once you are happy: `haelo policy lock`. The gateway then refuses to start if this file changes.
 version: 1
-stateDir: ~/.leash-rh-crypto
+stateDir: ~/.haelo-rh-mcp
 
 broker:
-  type: robinhood-crypto
-  # US customers only. Create an API credential in your Robinhood crypto account settings (web classic).
-  apiVersion: v1
+  type: mcp-upstream
+  # Robinhood's official agentic-trading MCP. Run `haelo auth` once to sign in with OAuth.
+  url: https://agent.robinhood.com/mcp/trading
+  # Once you have seen the upstream tools/list, name the tools explicitly (argument shapes are undocumented):
+  # quoteTools: { equity: get_equity_quotes, crypto: get_crypto_quotes }
+  # accountTool: get_portfolio
+  # positionsTool: get_equity_positions
+  # ordersTool: get_equity_orders
+  # taxLotsTool: get_equity_tax_lots
+  # toolOverrides: { some_tool_name: read }
 
 # The only account the agent may trade in; orders naming another account are blocked.
 # Set it like:  agent: { accountId: "123456789" }
@@ -14,12 +21,12 @@ agent: {}
 
 # LIVE TRADING IS OFF until you opt in here. While false, nothing is ever sent to a live account:
 # micro/standard cannot be configured or promoted into, and approved proposals are not executed.
-# Before turning it on, read docs/GO_LIVE.md and run `leash doctor --live`.
+# Before turning it on, read docs/GO_LIVE.md and run `haelo doctor --live`.
 live:
   enabled: false
 
 storage:
-  backend: sqlite           # sqlite (<stateDir>/leash.db) or jsonl (state.json + audit.jsonl)
+  backend: sqlite           # sqlite (<stateDir>/haelo.db) or jsonl (state.json + audit.jsonl)
 
 secrets:
   store: auto               # auto = OS keychain if available, else 0600 files; or keychain / file
@@ -74,7 +81,7 @@ shadow:
 
 approvals:
   ttlSeconds: 900
-  web: { host: 127.0.0.1, port: 8790 }   # `leash approvals-ui`
+  web: { host: 127.0.0.1, port: 8790 }   # `haelo approvals-ui`
 
 injection:
   enabled: true

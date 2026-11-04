@@ -15,14 +15,14 @@ afterEach(async () => {
 });
 
 function cfgFile(body: string): string {
-  const dir = mkdtempSync(join(tmpdir(), "leash-doc-"));
-  const f = join(dir, "leash.yaml");
+  const dir = mkdtempSync(join(tmpdir(), "haelo-doc-"));
+  const f = join(dir, "haelo.yaml");
   writeFileSync(f, `version: 1\nstateDir: ${join(dir, "state")}\n${body}`);
   return f;
 }
 const find = (cs: DoctorCheck[], area: string, name: string): DoctorCheck | undefined => cs.find((c) => c.area === area && c.name === name);
 
-describe("leash doctor", () => {
+describe("haelo doctor", () => {
   it("checks Alpaca paper and live accounts and market data with read-only requests", async () => {
     const paper: RunningMockAlpaca = await startMockAlpaca(newMockAlpacaState());
     const live: RunningMockAlpaca = await startMockAlpaca(newMockAlpacaState(), { key: "AKLIVE123", secret: "live-secret" });
@@ -111,7 +111,7 @@ describe("leash doctor", () => {
     expect(find(checks, "local", "audit chain")?.level).toBe("fail");
     expect(find(checks, "local", "state dir permissions")?.level).toBe("warn");
     expect(find(checks, "local", "http token")?.level).toBe("warn");
-    const short = await runDoctor(l, { env: { LEASH_HTTP_TOKEN: "short" } });
+    const short = await runDoctor(l, { env: { HAELO_HTTP_TOKEN: "short" } });
     expect(find(short, "local", "http token")?.level).toBe("fail");
   });
 

@@ -1,6 +1,6 @@
-# Leash
+# Haelo
 
-**An autonomy ladder for AI trading agents.** Leash is an [MCP](https://modelcontextprotocol.io) gateway that sits between your agent and your broker. The agent starts on a leash (everything simulated), and earns more freedom only by meeting criteria **you wrote down in advance**. Break a rule and it is demoted automatically, with no human in the loop.
+**An autonomy ladder for AI trading agents.** Haelo is an [MCP](https://modelcontextprotocol.io) gateway that sits between your agent and your broker. The agent starts on a haelo (everything simulated), and earns more freedom only by meeting criteria **you wrote down in advance**. Break a rule and it is demoted automatically, with no human in the loop.
 
 ```
 shadow ──► paper ──► propose ──► micro ──► standard
@@ -9,16 +9,16 @@ shadow ──► paper ──► propose ──► micro ──► standard
  quotes      account
 ```
 
-> **Not financial advice. Not a guarantee.** Leash reduces how badly an agent can hurt you. It does not make trading safe or profitable. Read [Limitations](#limitations) and [SECURITY.md](SECURITY.md) before connecting real money.
+> **Not financial advice. Not a guarantee.** Haelo reduces how badly an agent can hurt you. It does not make trading safe or profitable. Read [Limitations](#limitations) and [SECURITY.md](SECURITY.md) before connecting real money.
 
-[![CI](https://github.com/OWNER/leash/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/leash/actions/workflows/ci.yml)
+[![CI](https://github.com/OWNER/haelo/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/haelo/actions/workflows/ci.yml)
 MIT licensed · Node ≥ 22.13 · TypeScript · official MCP TypeScript SDK (v2) · SQLite (built-in `node:sqlite`)
 
 ---
 
 ## Why
 
-Giving an agent a brokerage login is all-or-nothing. Leash makes it a ladder:
+Giving an agent a brokerage login is all-or-nothing. Haelo makes it a ladder:
 
 | Rung | What happens to an order | Money at risk |
 |---|---|---|
@@ -34,13 +34,13 @@ Giving an agent a brokerage login is all-or-nothing. Leash makes it a ladder:
 |---|---|
 | Hard rule breach (e.g. order over the cap) | straight back to `shadow` |
 | Drawdown over the limit | down one rung |
-| Upstream tool list changed since it was pinned | `shadow`, and orders freeze until a human runs `leash pin approve` |
+| Upstream tool list changed since it was pinned | `shadow`, and orders freeze until a human runs `haelo pin approve` |
 | Order placed right after text that looks like a prompt injection | blocked, down one rung |
 | Any demotion | promotion frozen for a cool-down (default 24 h), open orders cancelled |
 
-The agent has **no tool** that promotes, demotes, approves, or edits policy. It can ask (`leash_request_promotion`) and read its own status.
+The agent has **no tool** that promotes, demotes, approves, or edits policy. It can ask (`haelo_request_promotion`) and read its own status.
 
-**Live trading is off by default.** `live.enabled: false` in the policy means no order can reach a live account: live rungs cannot be promoted into (not even with `--force`) and approved proposals are refused. Going live is a deliberate, policy-locked edit plus a passing `leash doctor --live`. See [docs/GO_LIVE.md](docs/GO_LIVE.md).
+**Live trading is off by default.** `live.enabled: false` in the policy means no order can reach a live account: live rungs cannot be promoted into (not even with `--force`) and approved proposals are refused. Going live is a deliberate, policy-locked edit plus a passing `haelo doctor --live`. See [docs/GO_LIVE.md](docs/GO_LIVE.md).
 
 ## What is real and what is not
 
@@ -50,11 +50,11 @@ Be skeptical of any trading tool that does not say this up front. Here is the ve
 |---|---|
 | MCP server (stdio + Streamable HTTP, official SDK v2, real client in tests) | **Verified** by automated end-to-end tests |
 | Policy engine, ladder, shadow ledger, household preflight, audit chain, SQLite + JSONL storage, CLI, web approvals UI | **Verified** by automated tests (unit, property-based, end-to-end; coverage enforced in CI) |
-| `leash doctor` | **Verified** against local mocks of each broker. It makes only read-only requests |
-| Alpaca adapter (paper + live) | A real REST client for the documented endpoints. Verified **only against a local mock server** that follows Alpaca's documented shapes. **Not yet run against Alpaca itself.** Use `leash doctor` (read-only) or `npm run smoke:alpaca` (paper order far from market, then cancel) with your keys |
-| Robinhood Crypto Trading API client | Ed25519 signing **verified byte for byte against the official documentation example**. Endpoints are verified against a mock only. **Not yet run against Robinhood.** `leash doctor` and `npm run smoke:robinhood-crypto` make real signed GETs |
-| Robinhood official agentic-trading MCP via `mcp-upstream` | Proxy mechanics are verified over real Streamable HTTP against a mock upstream. **OAuth 2.1 + PKCE `leash auth` is verified end to end against a local spec-compliant mock IdP** (RFC 9728 / 8414 / 7591, S256). Robinhood does **not publish** its tool schemas, so extraction is tolerant and fails closed. **Unverified against the real service** |
-| Token storage | OS keychain through `@napi-rs/keyring` (macOS Keychain, Windows Credential Manager, Linux Secret Service/keyutils), with a 0600 file fallback. `leash doctor` reports which one is in use |
+| `haelo doctor` | **Verified** against local mocks of each broker. It makes only read-only requests |
+| Alpaca adapter (paper + live) | A real REST client for the documented endpoints. Verified **only against a local mock server** that follows Alpaca's documented shapes. **Not yet run against Alpaca itself.** Use `haelo doctor` (read-only) or `npm run smoke:alpaca` (paper order far from market, then cancel) with your keys |
+| Robinhood Crypto Trading API client | Ed25519 signing **verified byte for byte against the official documentation example**. Endpoints are verified against a mock only. **Not yet run against Robinhood.** `haelo doctor` and `npm run smoke:robinhood-crypto` make real signed GETs |
+| Robinhood official agentic-trading MCP via `mcp-upstream` | Proxy mechanics are verified over real Streamable HTTP against a mock upstream. **OAuth 2.1 + PKCE `haelo auth` is verified end to end against a local spec-compliant mock IdP** (RFC 9728 / 8414 / 7591, S256). Robinhood does **not publish** its tool schemas, so extraction is tolerant and fails closed. **Unverified against the real service** |
+| Token storage | OS keychain through `@napi-rs/keyring` (macOS Keychain, Windows Credential Manager, Linux Secret Service/keyutils), with a 0600 file fallback. `haelo doctor` reports which one is in use |
 | Shadow fills | A simple model (quote ± slippage). **Good shadow results are weak evidence about live results** |
 | Wash-sale and lot checks | Heuristic warnings, **not tax advice**. Crypto wash-sale applicability is unverified, so it is off by default |
 
@@ -63,38 +63,38 @@ Nothing here is a stub presented as working. Where something cannot be checked w
 ## Quickstart (no broker account needed)
 
 ```bash
-git clone https://github.com/OWNER/leash && cd leash
+git clone https://github.com/OWNER/haelo && cd haelo
 npm ci && npm run build
 
 # 1. a local mock broker MCP server (test double, see the matrix above)
 node dist/cli.js mock-upstream --port 8799 &
 
 # 2. policy + state
-mkdir /tmp/leash-demo && cd /tmp/leash-demo
-node /path/to/leash/dist/cli.js init --broker mock
-node /path/to/leash/dist/cli.js policy lock
+mkdir /tmp/haelo-demo && cd /tmp/haelo-demo
+node /path/to/haelo/dist/cli.js init --broker mock
+node /path/to/haelo/dist/cli.js policy lock
 
 # 3. preflight, then serve over stdio for an MCP client, or HTTP for anything else
-node /path/to/leash/dist/cli.js doctor
-node /path/to/leash/dist/cli.js serve --http          # prints the URL; token is in <stateDir>/http-token
-node /path/to/leash/dist/cli.js status                # rung, caps, stats
-node /path/to/leash/dist/cli.js report                # shadow scorecard + promotion checklist
+node /path/to/haelo/dist/cli.js doctor
+node /path/to/haelo/dist/cli.js serve --http          # prints the URL; token is in <stateDir>/http-token
+node /path/to/haelo/dist/cli.js status                # rung, caps, stats
+node /path/to/haelo/dist/cli.js report                # shadow scorecard + promotion checklist
 ```
 
 ### With Alpaca paper (free account)
 
 ```bash
 export ALPACA_PAPER_KEY_ID=PK...  ALPACA_PAPER_SECRET_KEY=...
-leash init --broker alpaca && leash policy lock
-leash doctor                               # read-only: keys, account status, market data
+haelo init --broker alpaca && haelo policy lock
+haelo doctor                               # read-only: keys, account status, market data
 npm run smoke:alpaca                       # real API check: account, quote, order, cancel (paper only)
-leash serve --stdio
+haelo serve --stdio
 ```
 
 ### With Robinhood
 
-* **Crypto Trading API** (US only, API credential from your account): `leash init --broker robinhood-crypto`, set `RH_CRYPTO_API_KEY` and `RH_CRYPTO_PRIVATE_KEY`, run `npm run smoke:robinhood-crypto` (read-only) first.
-* **Official agentic-trading MCP**: `leash init --broker mcp-upstream`, run `leash auth`, then look at the upstream's `tools/list` and name the tools in `leash.yaml` (`quoteTools`, `accountTool`, ...). Brokers with no paper environment skip the `paper` rung.
+* **Crypto Trading API** (US only, API credential from your account): `haelo init --broker robinhood-crypto`, set `RH_CRYPTO_API_KEY` and `RH_CRYPTO_PRIVATE_KEY`, run `npm run smoke:robinhood-crypto` (read-only) first.
+* **Official agentic-trading MCP**: `haelo init --broker mcp-upstream`, run `haelo auth`, then look at the upstream's `tools/list` and name the tools in `haelo.yaml` (`quoteTools`, `accountTool`, ...). Brokers with no paper environment skip the `paper` rung.
 
 Neither Robinhood path has been run against Robinhood by the author. Start at `shadow` and read the audit log.
 
@@ -104,21 +104,21 @@ Neither Robinhood path has been run against Robinhood by the author. Start at `s
 * Cursor: [`examples/cursor.mcp.json`](examples/cursor.mcp.json) (HTTP variant: `cursor.mcp.http.json`)
 * Your own code: [`examples/sdk-client.ts`](examples/sdk-client.ts) uses the official client.
 
-The agent sees the broker's read tools, a normalized order tool (or the upstream's own order tools), and up to eight `leash_*` tools (`leash_propose_order` appears only with the normalized order tool): `leash_status`, `leash_preflight` (dry-run an order), `leash_propose_order`, `leash_get_proposal`, `leash_explain_block`, `leash_record_rationale`, `leash_shadow_report`, `leash_request_promotion`.
+The agent sees the broker's read tools, a normalized order tool (or the upstream's own order tools), and up to eight `haelo_*` tools (`haelo_propose_order` appears only with the normalized order tool): `haelo_status`, `haelo_preflight` (dry-run an order), `haelo_propose_order`, `haelo_get_proposal`, `haelo_explain_block`, `haelo_record_rationale`, `haelo_shadow_report`, `haelo_request_promotion`.
 
 ## The human's commands
 
 ```
-leash status | report                 where is the agent, and is it eligible to move up
-leash promote [--force]               one rung up if criteria are met (--force is audited)
-leash demote | panic                  one rung down, or straight to shadow + cancel open orders
-leash proposals                       orders waiting for you
-leash approve <id> | decline <id>     approval card, then type the id to confirm
-leash approvals-ui                    the same, as a local web page (loopback, token login, CSRF-protected)
-leash doctor [--live]                 read-only preflight of config, storage, keys and connectivity
-leash pin status | approve            review a changed upstream tool list
-leash audit verify | tail | export    check the hash chain, read it, export it as JSONL
-leash policy lock | check | show      pin the policy file's hash
+haelo status | report                 where is the agent, and is it eligible to move up
+haelo promote [--force]               one rung up if criteria are met (--force is audited)
+haelo demote | panic                  one rung down, or straight to shadow + cancel open orders
+haelo proposals                       orders waiting for you
+haelo approve <id> | decline <id>     approval card, then type the id to confirm
+haelo approvals-ui                    the same, as a local web page (loopback, token login, CSRF-protected)
+haelo doctor [--live]                 read-only preflight of config, storage, keys and connectivity
+haelo pin status | approve            review a changed upstream tool list
+haelo audit verify | tail | export    check the hash chain, read it, export it as JSONL
+haelo policy lock | check | show      pin the policy file's hash
 ```
 
 ## Architecture
@@ -127,8 +127,8 @@ leash policy lock | check | show      pin the policy file's hash
 flowchart LR
   A[AI agent<br/>Claude / Cursor / your code] -- MCP stdio or Streamable HTTP<br/>bearer token, Host/Origin checks --> G
 
-  subgraph Leash gateway
-    G[MCP server<br/>per-request McpServer] --> C[LeashCore]
+  subgraph Haelo gateway
+    G[MCP server<br/>per-request McpServer] --> C[HaeloCore]
     C --> CL[Classifier<br/>read / order / cancel / transfer / unknown]
     C --> IT[Injection tripwire<br/>+ taint window]
     C --> PE[Policy evaluator<br/>pure function]
@@ -153,7 +153,7 @@ How a call flows: classify the tool by name (annotations are **not** trusted) �
 
 ## Policy
 
-One YAML file. Annotated example: [`leash.example.yaml`](leash.example.yaml). Every field: [docs/POLICY.md](docs/POLICY.md). `leash policy lock` records the file's SHA-256; `serve` refuses to start if it changed, so the agent (or anything else with file access) cannot quietly loosen the rails.
+One YAML file. Annotated example: [`haelo.example.yaml`](haelo.example.yaml). Every field: [docs/POLICY.md](docs/POLICY.md). `haelo policy lock` records the file's SHA-256; `serve` refuses to start if it changed, so the agent (or anything else with file access) cannot quietly loosen the rails.
 
 ## Develop
 
@@ -168,25 +168,25 @@ CI runs lint, typecheck, build and tests with coverage thresholds (lines ≥ 90%
 ### Docker
 
 ```bash
-docker build -t leash .
-docker run --rm -p 127.0.0.1:8787:8787 -v leash-state:/state -v $PWD/leash.yaml:/config/leash.yaml:ro \
-  -e LEASH_HTTP_TOKEN=$(openssl rand -base64 24) -e ALPACA_PAPER_KEY_ID -e ALPACA_PAPER_SECRET_KEY leash
+docker build -t haelo .
+docker run --rm -p 127.0.0.1:8787:8787 -v haelo-state:/state -v $PWD/haelo.yaml:/config/haelo.yaml:ro \
+  -e HAELO_HTTP_TOKEN=$(openssl rand -base64 24) -e ALPACA_PAPER_KEY_ID -e ALPACA_PAPER_SECRET_KEY haelo
 ```
 
-In a container there is usually no OS keychain, so OAuth tokens fall back to 0600 files in the `/state` volume (`leash doctor` shows which store is used). The image runs as the unprivileged `node` user.
+In a container there is usually no OS keychain, so OAuth tokens fall back to 0600 files in the `/state` volume (`haelo doctor` shows which store is used). The image runs as the unprivileged `node` user.
 
 Set `stateDir: /state` in the mounted policy. Publish the port to loopback only, as above.
 
 ## Limitations
 
 * **A tripwire, not a wall.** Injection detection is regex plus hidden-character heuristics and a time/call window. A determined injection can evade it. The real protection is the rails: even a fully hijacked agent cannot exceed the per-order and daily caps of its rung, cannot transfer money, and cannot promote itself.
-* **The agent's host must be kept separate.** If the agent can run shell commands as the same OS user, it can run `leash promote`. Run Leash under a different user or in a container, and keep the state directory unreadable to the agent ([SECURITY.md](SECURITY.md)).
-* **Audit log is tamper-evident, not tamper-proof.** Anyone who can rewrite the whole file can recompute the chain. Anchor the head hash somewhere else (`leash status` prints it).
+* **The agent's host must be kept separate.** If the agent can run shell commands as the same OS user, it can run `haelo promote`. Run Haelo under a different user or in a container, and keep the state directory unreadable to the agent ([SECURITY.md](SECURITY.md)).
+* **Audit log is tamper-evident, not tamper-proof.** Anyone who can rewrite the whole file can recompute the chain. Anchor the head hash somewhere else (`haelo status` prints it).
 * **Prices and fills are as good as your broker's quote feed** (free Alpaca data is IEX-only).
 * **No standing orders / Robinhood Loops rung.** Not shipped by Robinhood at time of writing, so not built.
 * **No chat-app approvals** (Telegram, Slack). Approvals happen in the CLI or the local web UI.
 * **One agent per state directory.** Storage is SQLite (WAL) or JSON/JSONL; it is not built for many agents.
-* **The keychain only protects tokens at rest.** Anything running as the Leash user can still ask the keychain. Isolation by OS user or container is what matters.
+* **The keychain only protects tokens at rest.** Anything running as the Haelo user can still ask the keychain. Isolation by OS user or container is what matters.
 
 ## About the "Zauth" question
 

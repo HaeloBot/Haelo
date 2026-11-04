@@ -1,4 +1,4 @@
-import type { LeashConfig } from "./policy/schema.js";
+import type { HaeloConfig } from "./policy/schema.js";
 import type { Fill, HouseholdAccount, OrderIntent } from "./types.js";
 
 export type CheckLevel = "info" | "warn" | "block";
@@ -12,7 +12,7 @@ export interface PreflightCheck {
 const DAY_MS = 86_400_000;
 
 export interface HouseholdInput {
-  config: LeashConfig;
+  config: HaeloConfig;
   intent: OrderIntent;
   notionalUsd: number | undefined;
   /** Price used to value the order and judge gain or loss on a sell. */

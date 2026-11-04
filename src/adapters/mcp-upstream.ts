@@ -65,12 +65,12 @@ export class McpUpstreamAdapter implements BrokerAdapter {
 
   async connect(): Promise<void> {
     if (this.client) return;
-    const client = new Client({ name: "leash-gateway", version: VERSION }, { versionNegotiation: { mode: "auto" } });
+    const client = new Client({ name: "haelo-gateway", version: VERSION }, { versionNegotiation: { mode: "auto" } });
     try {
       await client.connect(this.makeTransport());
     } catch (e) {
       if (e instanceof UnauthorizedError) {
-        throw new BrokerError("Upstream requires sign-in. Run `leash auth` first.", 401);
+        throw new BrokerError("Upstream requires sign-in. Run `haelo auth` first.", 401);
       }
       throw new BrokerError(`Could not connect to upstream MCP server: ${errorMessage(e)}`);
     }
@@ -160,7 +160,7 @@ export class McpUpstreamAdapter implements BrokerAdapter {
     const crypto = symbol.includes("/") || /-USD[CT]?$/i.test(symbol);
     const configured = crypto ? this.o.quoteTools?.crypto : this.o.quoteTools?.equity;
     const tool = this.pickTool(configured, ["quote"], crypto ? ["option"] : ["crypto", "option"]) ?? (crypto ? this.pickTool(undefined, ["crypto", "quote"]) : undefined);
-    if (!tool) throw new BrokerError(`No quote tool found upstream for ${symbol}. Set broker.quoteTools in leash.yaml.`);
+    if (!tool) throw new BrokerError(`No quote tool found upstream for ${symbol}. Set broker.quoteTools in haelo.yaml.`);
     const args = McpUpstreamAdapter.symbolArgs(tool, symbol);
     if (!args) throw new BrokerError(`Cannot build arguments for upstream quote tool ${tool.name}; its schema has no symbol-like property.`);
     const res = await this.forward(tool.name, args);

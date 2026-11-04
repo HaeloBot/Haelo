@@ -9,7 +9,7 @@ import { sleep } from "../util.js";
 
 const require = createRequire(import.meta.url);
 
-/** Open (or create) the Leash SQLite database with WAL and a busy timeout so the gateway and CLI can share it. */
+/** Open (or create) the Haelo SQLite database with WAL and a busy timeout so the gateway and CLI can share it. */
 export function openDatabase(file: string): DatabaseSyncT {
   mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
   // Loaded lazily so the JSONL backend works on runtimes without node:sqlite.

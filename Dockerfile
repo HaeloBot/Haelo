@@ -8,7 +8,7 @@ COPY src ./src
 RUN npm run build && npm prune --omit=dev
 
 FROM node:24-slim
-ENV NODE_ENV=production LEASH_CONFIG=/config/leash.yaml
+ENV NODE_ENV=production HAELO_CONFIG=/config/haelo.yaml
 WORKDIR /app
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules

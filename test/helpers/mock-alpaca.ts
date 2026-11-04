@@ -68,7 +68,7 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
   return t ? JSON.parse(t) : undefined;
 }
 
-/** A local server that implements the Alpaca endpoints Leash uses, with the documented response shapes. */
+/** A local server that implements the Alpaca endpoints Haelo uses, with the documented response shapes. */
 export async function startMockAlpaca(state: MockAlpacaState = newMockAlpacaState(), creds = { key: KEY, secret: SECRET }): Promise<RunningMockAlpaca> {
   const equity = (): number => state.equityOverride ?? state.cash + Object.entries(state.positions).reduce((s, [sym, p]) => s + p.qty * (state.quotes[sym]?.bid ?? p.avg), 0);
 

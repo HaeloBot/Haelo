@@ -1,4 +1,4 @@
-import type { LeashConfig } from "./policy/schema.js";
+import type { HaeloConfig } from "./policy/schema.js";
 import type { OrderIntent, Quote } from "./types.js";
 import type { ShadowOrder, ShadowState } from "./state.js";
 import { round, uuid } from "./util.js";
@@ -23,7 +23,7 @@ export interface ShadowFillResult {
 export class ShadowLedger {
   constructor(
     private readonly state: ShadowState,
-    private readonly cfg: LeashConfig["shadow"],
+    private readonly cfg: HaeloConfig["shadow"],
     private readonly now: () => Date = () => new Date(),
   ) {}
 

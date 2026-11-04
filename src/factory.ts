@@ -4,18 +4,18 @@ import { RobinhoodCryptoBroker } from "./adapters/robinhood-crypto.js";
 import { McpUpstreamAdapter } from "./adapters/mcp-upstream.js";
 import { RestAdapter } from "./adapters/rest-base.js";
 import type { BrokerAdapter, FetchFn } from "./adapters/types.js";
-import { LeashCore } from "./core.js";
+import { HaeloCore } from "./core.js";
 import { SecretOAuthProvider } from "./oauth.js";
 import { openSecretStore } from "./secrets.js";
 import type { LoadedConfig } from "./policy/load.js";
-import type { LeashConfig } from "./policy/schema.js";
+import type { HaeloConfig } from "./policy/schema.js";
 import { openStorage } from "./storage/index.js";
 
 export interface BuildOptions {
   env?: NodeJS.ProcessEnv;
   fetch?: FetchFn;
   now?: () => Date;
-  /** Called with the authorization URL when `leash auth` needs the user to sign in. */
+  /** Called with the authorization URL when `haelo auth` needs the user to sign in. */
   onOAuthRedirect?: (url: URL) => void;
 }
 
@@ -26,7 +26,7 @@ function need(env: NodeJS.ProcessEnv, name: string, what: string): string {
 }
 
 /** Create the broker adapter named in the config. Secrets come only from the environment. */
-export function buildAdapter(config: LeashConfig, stateDir: string, opts: BuildOptions = {}): BrokerAdapter {
+export function buildAdapter(config: HaeloConfig, stateDir: string, opts: BuildOptions = {}): BrokerAdapter {
   const env = opts.env ?? process.env;
   const b = config.broker;
   switch (b.type) {
@@ -92,7 +92,7 @@ export function buildAdapter(config: LeashConfig, stateDir: string, opts: BuildO
 }
 
 /** An adapter that cannot reach any broker. Used by commands that only read local state (status, proposals). */
-export function offlineAdapter(config: LeashConfig): BrokerAdapter {
+export function offlineAdapter(config: HaeloConfig): BrokerAdapter {
   const fail = (): never => {
     throw new Error("This command does not load broker credentials.");
   };
@@ -118,11 +118,11 @@ export function offlineAdapter(config: LeashConfig): BrokerAdapter {
   };
 }
 
-/** Wire config, adapter, state and audit log into a LeashCore. Call `core.init()` before serving. */
-export function createLeash(loaded: LoadedConfig, opts: BuildOptions & { adapter?: BrokerAdapter; offline?: boolean } = {}): LeashCore {
+/** Wire config, adapter, state and audit log into a HaeloCore. Call `core.init()` before serving. */
+export function createHaelo(loaded: LoadedConfig, opts: BuildOptions & { adapter?: BrokerAdapter; offline?: boolean } = {}): HaeloCore {
   mkdirSync(loaded.stateDir, { recursive: true, mode: 0o700 });
   const now = opts.now ?? (() => new Date());
   const adapter = opts.adapter ?? (opts.offline ? offlineAdapter(loaded.config) : buildAdapter(loaded.config, loaded.stateDir, opts));
-  const storage = openStorage(loaded.config.storage.backend, loaded.stateDir, LeashCore.initialStateFactory(loaded.config, now), now);
-  return new LeashCore({ config: loaded.config, adapter, store: storage.store, audit: storage.audit, now, onClose: storage.close });
+  const storage = openStorage(loaded.config.storage.backend, loaded.stateDir, HaeloCore.initialStateFactory(loaded.config, now), now);
+  return new HaeloCore({ config: loaded.config, adapter, store: storage.store, audit: storage.audit, now, onClose: storage.close });
 }

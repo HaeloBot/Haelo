@@ -1,9 +1,9 @@
 {
   "mcpServers": {
-    "leash": {
+    "haelo": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://127.0.0.1:8787/mcp", "--allow-http", "--header", "Authorization:${LEASH_AUTH}"],
-      "env": { "LEASH_AUTH": "Bearer PASTE_TOKEN_FROM_STATE_DIR_http-token" }
+      "args": ["-y", "mcp-remote", "http://127.0.0.1:8787/mcp", "--allow-http", "--header", "Authorization:${HAELO_AUTH}"],
+      "env": { "HAELO_AUTH": "Bearer PASTE_TOKEN_FROM_STATE_DIR_http-token" }
     }
   }
 }

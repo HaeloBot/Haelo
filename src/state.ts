@@ -92,7 +92,7 @@ export interface PersistedState {
   shadow: ShadowState;
   usage: UsageState;
   pin?: { hash: string; pinnedAt: string; defs: ToolDef[] };
-  /** Set when upstream tools changed from the pin. Orders are refused until `leash pin approve`. */
+  /** Set when upstream tools changed from the pin. Orders are refused until `haelo pin approve`. */
   drift?: { detectedAt: string; hash: string; added: string[]; removed: string[]; changed: string[]; reason?: string };
   proposals: Proposal[];
 }
@@ -157,7 +157,7 @@ export class StateStore implements StateBackend {
         } catch {
           /* raced with another process; retry */
         }
-        if (Date.now() > deadline) throw new Error("Timed out waiting for the Leash state lock.", { cause: e });
+        if (Date.now() > deadline) throw new Error("Timed out waiting for the Haelo state lock.", { cause: e });
         await sleep(15);
       }
     }

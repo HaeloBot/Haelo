@@ -44,6 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t leash:ci .
-      - run: docker run --rm leash:ci --version
-      - run: docker run --rm --entrypoint id leash:ci -u | grep -qv '^0$'
+      - run: docker build -t haelo:ci .
+      - run: docker run --rm haelo:ci --version
+      - run: docker run --rm --entrypoint id haelo:ci -u | grep -qv '^0$'

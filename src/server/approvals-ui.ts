@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createHmac, randomBytes } from "node:crypto";
-import type { LeashCore } from "../core.js";
+import type { HaeloCore } from "../core.js";
 import type { Proposal } from "../state.js";
 import { errorMessage, safeEqual } from "../util.js";
 
@@ -92,12 +92,12 @@ function card(p: Proposal, csrf: string): string {
 </section>`;
 }
 
-function page(core: LeashCore, csrf: string, flash?: string): string {
+function page(core: HaeloCore, csrf: string, flash?: string): string {
   const st = core.status();
   const ps = core.listProposals().slice().reverse();
   const pending = ps.filter((p) => p.status === "pending");
   const done = ps.filter((p) => p.status !== "pending").slice(0, 20);
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Leash approvals</title>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Haelo approvals</title>
 <style>
 body{font:15px/1.45 system-ui,sans-serif;max-width:860px;margin:2rem auto;padding:0 1rem;color:#111}
 .card{border:1px solid #ccc;border-radius:8px;padding:1rem;margin:1rem 0}.card.pending{border-color:#c80}
@@ -105,7 +105,7 @@ th{text-align:left;padding-right:1rem;color:#555;font-weight:normal}li.block{col
 .rationale{background:#f6f6f6;padding:.5rem;border-left:3px solid #999}.error{color:#b00}.flash{background:#eef;padding:.5rem}
 form{display:inline-block;margin:.5rem 1rem .5rem 0}button{padding:.4rem .8rem}
 </style></head><body>
-<h1>Leash approvals</h1>
+<h1>Haelo approvals</h1>
 <p>Rung <b>${esc(st.rung)}</b> · ${esc(st.capsToday.remainingDailyUsd)} USD left today · live trading ${core.config.live.enabled ? "<b>enabled</b>" : "disabled"} · ${pending.length} pending</p>
 ${flash ? `<p class="flash">${esc(flash)}</p>` : ""}
 <h2>Pending</h2>${pending.length ? pending.map((p) => card(p, csrf)).join("") : "<p>Nothing waiting.</p>"}
@@ -115,12 +115,12 @@ ${flash ? `<p class="flash">${esc(flash)}</p>` : ""}
 }
 
 /**
- * Local web UI for deciding proposals, in addition to `leash approve`. Loopback only. Auth: the gateway's bearer
+ * Local web UI for deciding proposals, in addition to `haelo approve`. Loopback only. Auth: the gateway's bearer
  * token, either as an Authorization header or exchanged once at /login for an HttpOnly, SameSite=Strict cookie.
  * State-changing requests are POST-only and need a CSRF token bound to the session, a same-origin Origin header,
  * and the proposal id typed back. The agent never gets this token.
  */
-export async function startApprovalsUi(core: LeashCore, opts: ApprovalsUiOptions): Promise<RunningApprovalsUi> {
+export async function startApprovalsUi(core: HaeloCore, opts: ApprovalsUiOptions): Promise<RunningApprovalsUi> {
   if (!LOOPBACK.has(opts.host)) throw new Error("The approvals UI only binds to loopback.");
   if (!opts.token || opts.token.length < 16) throw new Error("Token must be at least 16 characters.");
   const sessionSecret = randomBytes(32);
@@ -131,7 +131,7 @@ export async function startApprovalsUi(core: LeashCore, opts: ApprovalsUiOptions
   const authed = (req: IncomingMessage): string | undefined => {
     const m = /^Bearer (.+)$/i.exec(req.headers.authorization ?? "");
     if (m && safeEqual(m[1] as string, opts.token)) return "bearer";
-    const sid = cookies(req)["leash_sid"];
+    const sid = cookies(req)["haelo_sid"];
     return sid && sessions.has(sid) ? sid : undefined;
   };
 
@@ -151,13 +151,13 @@ export async function startApprovalsUi(core: LeashCore, opts: ApprovalsUiOptions
         }
         const sid = randomBytes(24).toString("base64url");
         sessions.add(sid);
-        res.writeHead(303, { location: "/", "set-cookie": `leash_sid=${sid}; HttpOnly; SameSite=Strict; Path=/`, "cache-control": "no-store", "referrer-policy": "no-referrer" }).end();
+        res.writeHead(303, { location: "/", "set-cookie": `haelo_sid=${sid}; HttpOnly; SameSite=Strict; Path=/`, "cache-control": "no-store", "referrer-policy": "no-referrer" }).end();
         return;
       }
       const sid = authed(req);
       if (!sid) {
         headers(res, "text/plain; charset=utf-8");
-        res.writeHead(401).end("Unauthorized. Open the login URL printed by `leash approvals-ui`.");
+        res.writeHead(401).end("Unauthorized. Open the login URL printed by `haelo approvals-ui`.");
         return;
       }
       if (req.method === "GET" && url.pathname === "/") {

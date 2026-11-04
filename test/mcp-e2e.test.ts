@@ -32,14 +32,14 @@ async function connectHttp(url: string, token = TOKEN): Promise<Client> {
 
 const text = (r: { content?: unknown }): string => JSON.stringify(r.content);
 
-describe("Leash as an MCP server over Streamable HTTP (real SDK client)", () => {
-  it("serves tools/list with upstream tools and Leash tools, never transfers", async () => {
+describe("Haelo as an MCP server over Streamable HTTP (real SDK client)", () => {
+  it("serves tools/list with upstream tools and Haelo tools, never transfers", async () => {
     h = await upstreamHarness();
     http = await startHttp(h.core, { host: "127.0.0.1", port: 0, token: TOKEN });
     const c = await connectHttp(http.url);
     const names = (await c.listTools()).tools.map((t) => t.name);
     expect(names).toContain("place_equity_order");
-    expect(names).toContain("leash_status");
+    expect(names).toContain("haelo_status");
     expect(names).not.toContain("transfer_funds");
   });
 
@@ -50,7 +50,7 @@ describe("Leash as an MCP server over Streamable HTTP (real SDK client)", () => 
     const r = await c.callTool({ name: "place_equity_order", arguments: { account_number: "MOCK-AGENT-1", symbol: "AAPL", side: "buy", type: "market", notional: 100 } });
     expect(r.isError).toBeFalsy();
     expect(text(r)).toContain("simulated");
-    const s = await c.callTool({ name: "leash_status", arguments: {} });
+    const s = await c.callTool({ name: "haelo_status", arguments: {} });
     expect(text(s)).toContain("shadow");
     expect(h.state.orders).toHaveLength(0);
   });
@@ -107,18 +107,18 @@ describe("Leash as an MCP server over Streamable HTTP (real SDK client)", () => 
   });
 });
 
-describe("Leash as an MCP server over stdio (spawned compiled CLI)", () => {
+describe("Haelo as an MCP server over stdio (spawned compiled CLI)", () => {
   it("serves the same gateway over stdio", async () => {
     up = await startMockUpstream();
-    const dir = mkdtempSync(join(tmpdir(), "leash-stdio-"));
-    const cfg = join(dir, "leash.yaml");
+    const dir = mkdtempSync(join(tmpdir(), "haelo-stdio-"));
+    const cfg = join(dir, "haelo.yaml");
     writeFileSync(cfg, `version: 1\nstateDir: ${dir}/state\nbroker:\n  type: mcp-upstream\n  url: ${up.url}\n  accountTool: get_portfolio\nagent: { accountId: MOCK-AGENT-1 }\nhousehold: { enabled: false }\n`);
     const cli = resolve(__dirname, "../dist/cli.js");
     const client = new Client({ name: "stdio-agent", version: "1" }, { versionNegotiation: { mode: "auto" } });
     clients.push(client);
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [cli, "serve", "--stdio", "--config", cfg], stderr: "pipe" }));
     const names = (await client.listTools()).tools.map((t) => t.name);
-    expect(names).toContain("leash_status");
+    expect(names).toContain("haelo_status");
     expect(names).toContain("get_portfolio");
     expect(names).not.toContain("transfer_funds");
     const r = await client.callTool({ name: "place_equity_order", arguments: { account_number: "MOCK-AGENT-1", symbol: "AAPL", side: "buy", type: "market", notional: 40 } });

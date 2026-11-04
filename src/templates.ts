@@ -3,12 +3,12 @@ export type TemplateBroker = "alpaca" | "robinhood-crypto" | "mcp-upstream" | "m
 const COMMON = `
 # LIVE TRADING IS OFF until you opt in here. While false, nothing is ever sent to a live account:
 # micro/standard cannot be configured or promoted into, and approved proposals are not executed.
-# Before turning it on, read docs/GO_LIVE.md and run \`leash doctor --live\`.
+# Before turning it on, read docs/GO_LIVE.md and run \`haelo doctor --live\`.
 live:
   enabled: false
 
 storage:
-  backend: sqlite           # sqlite (<stateDir>/leash.db) or jsonl (state.json + audit.jsonl)
+  backend: sqlite           # sqlite (<stateDir>/haelo.db) or jsonl (state.json + audit.jsonl)
 
 secrets:
   store: auto               # auto = OS keychain if available, else 0600 files; or keychain / file
@@ -63,7 +63,7 @@ shadow:
 
 approvals:
   ttlSeconds: 900
-  web: { host: 127.0.0.1, port: 8790 }   # \`leash approvals-ui\`
+  web: { host: 127.0.0.1, port: 8790 }   # \`haelo approvals-ui\`
 
 injection:
   enabled: true
@@ -100,7 +100,7 @@ const BROKERS: Record<TemplateBroker, string> = {
 `,
   "mcp-upstream": `broker:
   type: mcp-upstream
-  # Robinhood's official agentic-trading MCP. Run \`leash auth\` once to sign in with OAuth.
+  # Robinhood's official agentic-trading MCP. Run \`haelo auth\` once to sign in with OAuth.
   url: https://agent.robinhood.com/mcp/trading
   # Once you have seen the upstream tools/list, name the tools explicitly (argument shapes are undocumented):
   # quoteTools: { equity: get_equity_quotes, crypto: get_crypto_quotes }
@@ -112,16 +112,16 @@ const BROKERS: Record<TemplateBroker, string> = {
 `,
   mock: `broker:
   type: mcp-upstream
-  # Local test double started with \`leash mock-upstream --port 8799\`. No broker account needed.
+  # Local test double started with \`haelo mock-upstream --port 8799\`. No broker account needed.
   url: http://127.0.0.1:8799/
 `,
 };
 
 export function configTemplate(broker: TemplateBroker, opts: { stateDir?: string } = {}): string {
-  return `# Leash policy. Read docs/POLICY.md for every field.
-# Lock it once you are happy: \`leash policy lock\`. The gateway then refuses to start if this file changes.
+  return `# Haelo policy. Read docs/POLICY.md for every field.
+# Lock it once you are happy: \`haelo policy lock\`. The gateway then refuses to start if this file changes.
 version: 1
-stateDir: ${opts.stateDir ?? "~/.leash"}
+stateDir: ${opts.stateDir ?? "~/.haelo"}
 
 ${BROKERS[broker]}
 # The only account the agent may trade in; orders naming another account are blocked.

@@ -178,7 +178,7 @@ describe("buildAdapter", () => {
     expect(buildAdapter(cfg({ type: "robinhood-crypto" }), "/tmp", { env: { RH_CRYPTO_API_KEY: "k", RH_CRYPTO_PRIVATE_KEY: "xQnTJVeQLmw1/Mg2YimEViSpw/SdJcgNXZ5kQkAXNPU=" } }).id).toBe("robinhood-crypto");
     expect(() => buildAdapter(cfg({ type: "mcp-upstream", url: "http://x.test/", bearerTokenEnv: "T" }), "/tmp", { env: {} })).toThrow(/empty/);
     expect(buildAdapter(cfg({ type: "mcp-upstream", url: "http://x.test/", bearerTokenEnv: "T" }), "/tmp", { env: { T: "tok" } }).dynamicTools).toBe(true);
-    expect(buildAdapter(parseConfig(JSON.stringify({ version: 1, broker: { type: "mcp-upstream", url: "http://x.test/" }, secrets: { store: "file" } })), "/tmp/leash-ba", { env: {} }).id).toBe("mcp-upstream");
+    expect(buildAdapter(parseConfig(JSON.stringify({ version: 1, broker: { type: "mcp-upstream", url: "http://x.test/" }, secrets: { store: "file" } })), "/tmp/haelo-ba", { env: {} }).id).toBe("mcp-upstream");
     expect(buildAdapter(cfg({ type: "mcp-upstream", command: "node", passEnv: ["A", "B"] }), "/tmp", { env: { A: "1" } }).id).toBe("mcp-upstream");
   });
 
