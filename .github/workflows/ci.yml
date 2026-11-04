@@ -25,7 +25,7 @@ jobs:
       # Fails the job if coverage drops below the thresholds in vitest.config.ts.
       - run: npm run test:coverage
       - if: matrix.node == 24
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage/lcov.info
