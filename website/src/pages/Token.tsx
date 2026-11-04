@@ -32,7 +32,7 @@ export default function Token(): React.ReactElement {
     <article className="token">
       <Meta
         title={`$${symbol}: Haelo`}
-        description={`$${symbol} is the community token for the Haelo project. It is launching on ponsfamily.com. Not financial advice.`}
+        description={`$${symbol} is the community token for the Haelo project. It launches on pump.fun on Solana. Not financial advice.`}
       />
       <section className="token-hero" data-fx="level" aria-label={`${symbol} token`}>
         <div className="token-stage">
@@ -45,19 +45,19 @@ export default function Token(): React.ReactElement {
           <h1 className="display glitch" data-text={`$${symbol}`}>
             ${symbol}
           </h1>
-          <p className="lede">The community token for the Haelo project. Launching on ponsfamily.com.</p>
+          <p className="lede">The community token for the Haelo project. A Solana token on pump.fun.</p>
         </div>
       </section>
 
       <section className="band token-about" data-fx="section">
         <h2 className="display" data-fx="head">About ${symbol}</h2>
         <p>
-          ${symbol} is a community token for the people around Haelo, the MCP gateway that puts trading agents on an autonomy ladder. It is launching on{" "}
-          <a href="https://ponsfamily.com">ponsfamily.com</a>. It does not unlock the software, it is not equity in the project, and it is not a promise of a price.
+          ${symbol} is a community token for the people around Haelo, the MCP gateway that puts trading agents on an autonomy ladder. It is a Solana token launched on{" "}
+          <a href="https://pump.fun">pump.fun</a>. It does not unlock the software, it is not equity in the project, and it is not a promise of a price.
         </p>
 
         <div className={copied ? "ca-card copied" : "ca-card"}>
-          <p className="kicker">Contract address</p>
+          <p className="kicker">Token mint (CA)</p>
           {ready ? (
             <>
               <p className="ca-big">{truncateCa(ca)}</p>
@@ -69,7 +69,7 @@ export default function Token(): React.ReactElement {
           ) : (
             <>
               <p className="ca-big">CA coming soon</p>
-              <p className="ca-full">The contract address will show here when it is published in config.json.</p>
+              <p className="ca-full">The Solana mint address will show here when it is published in config.json.</p>
               <button className="btn" type="button" disabled>
                 Copy address
               </button>
@@ -87,8 +87,8 @@ export default function Token(): React.ReactElement {
               Buy ${symbol}
             </button>
           )}
-          <a className="btn ghost" href="https://ponsfamily.com" target="_blank" rel="noreferrer">
-            ponsfamily.com
+          <a className="btn ghost" href={ready ? `https://solscan.io/token/${encodeURIComponent(ca.trim())}` : "https://pump.fun"} target="_blank" rel="noreferrer">
+            {ready ? "View on Solscan" : "pump.fun"}
           </a>
         </div>
         <p className="token-note">Memecoin. High risk. Not financial advice.</p>

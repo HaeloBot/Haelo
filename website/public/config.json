@@ -2,7 +2,7 @@
   "token": {
     "symbol": "HAELO",
     "ca": "",
-    "buyUrlTemplate": "https://ponsfamily.com/launchpad/{CA}"
+    "buyUrlTemplate": "https://pump.fun/coin/{CA}"
   },
   "social": {
     "x": "https://x.com/HaeloBot"

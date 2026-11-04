@@ -6,7 +6,7 @@ const siteConfigSchema = z.object({
   token: z.object({
     symbol: z.string().min(1).default("HAELO"),
     ca: z.string().default(""),
-    buyUrlTemplate: z.string().min(1).default("https://ponsfamily.com/launchpad/{CA}"),
+    buyUrlTemplate: z.string().min(1).default("https://pump.fun/coin/{CA}"),
   }),
   social: z.object({
     x: z.string().url().default("https://x.com/HaeloBot"),
@@ -25,7 +25,7 @@ export const FALLBACK_CONFIG: SiteConfig = {
   token: {
     symbol: "HAELO",
     ca: "",
-    buyUrlTemplate: "https://ponsfamily.com/launchpad/{CA}",
+    buyUrlTemplate: "https://pump.fun/coin/{CA}",
   },
   social: { x: "https://x.com/HaeloBot" },
   solana: { rpcUrl: DEFAULT_SOLANA_RPC },
@@ -39,7 +39,8 @@ export function isCaSet(ca: string): boolean {
   if (!trimmed) return false;
   if (PLACEHOLDER.test(trimmed)) return false;
   if (/^0x0+$/i.test(trimmed)) return false;
-  return true;
+  // A Solana mint is a base58 public key. Anything else is not a contract address on this chain.
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(trimmed);
 }
 
 export function truncateCa(ca: string): string {

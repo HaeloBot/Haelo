@@ -4,7 +4,7 @@ import { buyUrl, isCaSet, parseSiteConfig, truncateCa } from "../src/site-config
 describe("site config", () => {
   it("accepts the shipped file shape and keeps an empty contract address unset", () => {
     const cfg = parseSiteConfig({
-      token: { symbol: "HAELO", ca: "", buyUrlTemplate: "https://ponsfamily.com/launchpad/{CA}" },
+      token: { symbol: "HAELO", ca: "", buyUrlTemplate: "https://pump.fun/coin/{CA}" },
       social: { x: "https://x.com/HaeloBot" },
     });
     expect(cfg.token.symbol).toBe("HAELO");
@@ -30,9 +30,10 @@ describe("site config", () => {
     expect(isCaSet("  ")).toBe(false);
     expect(isCaSet("TBD")).toBe(false);
     expect(isCaSet("0x000")).toBe(false);
+    expect(isCaSet("0x1234567890abcdef1234567890abcdef12345678")).toBe(false); // an EVM address is not a Solana mint
     const ca = "So11111111111111111111111111111111111111112";
     expect(isCaSet(ca)).toBe(true);
     expect(truncateCa(ca)).toBe("So1111…1112");
-    expect(buyUrl("https://ponsfamily.com/launchpad/{CA}", ca)).toBe(`https://ponsfamily.com/launchpad/${encodeURIComponent(ca)}`);
+    expect(buyUrl("https://pump.fun/coin/{CA}", ca)).toBe(`https://pump.fun/coin/${encodeURIComponent(ca)}`);
   });
 });
