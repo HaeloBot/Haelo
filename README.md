@@ -16,6 +16,11 @@ shadow ──► paper ──► propose ──► micro ──► standard
 [![CI](https://github.com/HaeloBot/Haelo/actions/workflows/ci.yml/badge.svg)](https://github.com/HaeloBot/Haelo/actions/workflows/ci.yml)
 MIT licensed · Node ≥ 22.13 · TypeScript · official MCP TypeScript SDK (v2) · SQLite (built-in `node:sqlite`)
 
+The site is [https://haelobot.github.io/Haelo/](https://haelobot.github.io/Haelo/). The playground there runs this repository's policy engine, ladder, and audit chain in the browser, in shadow only. It never asks for a broker key. Live trading stays on the local CLI.
+
+<p align="center"><img src="docs/website/landing.png" alt="Haelo landing page. A lime robot with a halo beside the headline Earn the next rung." width="780"></p>
+<p align="center"><img src="docs/website/playground.png" alt="Haelo playground after a shadow session promoted to paper, with the hash-chained audit log." width="780"></p>
+
 ---
 
 ## Why
