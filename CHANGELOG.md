@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Robinhood Chain mainnet swaps through Uniswap v3 SwapRouter02. Paper quotes on-chain and does not sign. Live sends need `live.enabled` and `confirm: true`, use an exact token approval, and record the transaction hash in the audit log. Testnet has no published Uniswap router.
+
 ## 0.3.0
 
 * Website hosted at haelobot.com, including the in-browser shadow playground.

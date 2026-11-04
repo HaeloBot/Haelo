@@ -20,6 +20,10 @@ export interface OrderIntent {
   stopPrice?: number;
   timeInForce?: string;
   assetClass: AssetClass;
+  /** Basis points of slippage the caller asked for. Policy refuses a value above `rails.maxSlippageBps`. */
+  slippageBps?: number;
+  /** Live Robinhood Chain swaps are refused unless this is true. */
+  confirm?: boolean;
   /** Account the order targets, when the call names one. */
   account?: string;
   clientOrderId?: string;

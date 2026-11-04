@@ -82,6 +82,9 @@ export function evaluateOrder(input: EvalInput): EvalResult {
   if (!rails.allowOrderTypes.includes(intent.type)) {
     add("order_type_not_allowed", "breach", `Order type "${intent.type}" is not allowed by policy.`);
   }
+  if (intent.slippageBps !== undefined && intent.slippageBps > rails.maxSlippageBps) {
+    add("max_slippage", "breach", `Slippage ${intent.slippageBps} bps exceeds the ${rails.maxSlippageBps} bps cap.`);
+  }
 
   const blocked = rails.blockSymbols.map(norm);
   if (symbol && blocked.includes(symbol)) add("symbol_blocked", "breach", `${symbol} is on the block list.`);

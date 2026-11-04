@@ -82,7 +82,7 @@ haelo serve --stdio`}</pre>
       </p>
       <h2>What the agent is allowed to call</h2>
       <p>
-        Read tools from the broker, a normalized order tool, and a short list of <code>haelo_*</code> tools: status, preflight, propose, explain a block, shadow report, request promotion. There is no tool that promotes, demotes, approves, or edits policy.
+        Read tools from the broker, a normalized order tool, and a short list of <code>haelo_*</code> tools: status, preflight, propose, explain a block, shadow report, request promotion, and a kill switch that drops the agent to shadow. There is no tool that promotes, approves, or edits policy. Robinhood Chain swaps, when you opt in on the CLI, are documented in <code>docs/CHAIN.md</code>. This website does not take a key and does not send them.
       </p>
       <h2>The human's commands</h2>
       <pre className="code">{`haelo status | report

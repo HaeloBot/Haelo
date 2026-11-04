@@ -29,6 +29,7 @@ stateDir: ~/.haelo             # audit.jsonl, state.json, policy.lock, http-toke
 |---|---|
 | `alpaca` | `paperKeyIdEnv`, `paperSecretEnv`, `liveKeyIdEnv`, `liveSecretEnv` (env var names), `feed` (`iex`/`sip`/`delayed_sip`), `paperBaseUrl`, `liveBaseUrl`, `dataBaseUrl` |
 | `robinhood-crypto` | `apiKeyEnv`, `privateKeyEnv` (base64 Ed25519 seed), `apiVersion` (`v1`/`v2`), `baseUrl` |
+| `robinhood-chain` | Uniswap v3 on Robinhood Chain. `network` (`mainnet`), `rpcUrl`, `privateKeyEnv` (`HAELO_PRIVATE_KEY`), `keystoreEnv` (`HAELO_KEYSTORE`), `addressEnv`, `deadlineSeconds`, `maxConsecutiveErrors`, `tokens`. See [CHAIN.md](CHAIN.md). |
 | `mcp-upstream` | exactly one of `url` / `command` (+`args`, `passEnv`); `bearerTokenEnv` (else OAuth for URLs, via `haelo auth`); `oauthPort`; `quoteTools.{equity,crypto}`, `accountTool`, `positionsTool`, `ordersTool`, `taxLotsTool`, `cancelAllTool`; `toolOverrides: { tool: read\|order_place\|order_cancel\|transfer\|blocked }` |
 
 ## `agent`
@@ -48,6 +49,7 @@ stateDir: ~/.haelo             # audit.jsonl, state.json, policy.lock, http-toke
 | `allowAssetClasses` | `[equity, crypto]` | options are off unless added |
 | `allowShort` | false | selling more than held is blocked |
 | `maxPositionPct` | 100 | single-symbol share of equity after the order |
+| `maxSlippageBps` | 100 | Robinhood Chain: largest slippage a swap may request. Above this is a breach |
 
 `rungs.micro` defaults to `maxOrderUsd: 25, maxDailyUsd: 100, maxOrdersPerDay: 5`. A rung override can never exceed the standard rail; `allowSymbols` overrides intersect with the global list.
 

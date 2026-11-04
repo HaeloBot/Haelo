@@ -88,7 +88,7 @@ export function evaluatePromotion(config: HaeloConfig, state: PersistedState, su
   return { from, to, eligible: checks.every((c) => c.ok), checks };
 }
 
-export type DemotionTrigger = "breach" | "drawdown" | "tool_drift" | "injection_follow" | "manual" | "panic";
+export type DemotionTrigger = "breach" | "drawdown" | "tool_drift" | "injection_follow" | "manual" | "panic" | "live_errors";
 
 /** Target rung for a demotion. Never moves the agent UP, and never below the first usable rung. */
 export function demotionTarget(config: HaeloConfig, current: Rung, trigger: DemotionTrigger, supportsPaper: boolean): Rung {
@@ -108,6 +108,7 @@ export function demotionTarget(config: HaeloConfig, current: Rung, trigger: Demo
       target = d.onInjectionFollow === "one_rung" ? prevRung(current, supportsPaper) : d.onInjectionFollow;
       break;
     case "panic":
+    case "live_errors":
       target = "shadow";
       break;
     case "manual":

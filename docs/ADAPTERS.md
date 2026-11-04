@@ -27,6 +27,10 @@ Rules: use `requestJson` (timeouts; GET-only retries; **never retry POST**), thr
 
 `mcp-upstream.ts` is the reference: it lists the upstream's tools, classifies them, parses orders from the upstream's own argument shapes, and executes them.
 
+## Robinhood Chain (Uniswap v3)
+
+`broker.type: robinhood-chain` quotes and swaps WETH/USDG through Uniswap v3 SwapRouter02 on chain 4663. Paper quotes with `eth_call` and does not sign. Live sends require `live.enabled` and `confirm: true`, approve the exact input amount, simulate, then broadcast. Addresses and risks: [CHAIN.md](CHAIN.md).
+
 ## Register it
 
 Add a variant to `brokerSchema` (`src/policy/schema.ts`), a case in `buildAdapter` (`src/factory.ts`), a template in `src/templates.ts`, then tests: a local mock server, retry/no-retry behaviour, paper/live separation, error mapping. State in the README matrix what is verified against the real service.

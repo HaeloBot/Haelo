@@ -50,7 +50,7 @@ describe("haelo CLI", () => {
     expect(v.stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  it.each(["alpaca", "robinhood-crypto", "mcp-upstream", "mock"] as const)("the %s config template is valid", (b) => {
+  it.each(["alpaca", "robinhood-crypto", "robinhood-chain", "mcp-upstream", "mock"] as const)("the %s config template is valid", (b) => {
     expect(() => parseConfig(configTemplate(b))).not.toThrow();
   });
 

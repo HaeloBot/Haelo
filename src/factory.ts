@@ -1,11 +1,16 @@
 import { mkdirSync } from "node:fs";
+import { getAddress } from "viem";
 import { AlpacaBroker } from "./adapters/alpaca.js";
+import { RobinhoodChainBroker } from "./adapters/robinhood-chain.js";
 import { RobinhoodCryptoBroker } from "./adapters/robinhood-crypto.js";
 import { McpUpstreamAdapter } from "./adapters/mcp-upstream.js";
 import { RestAdapter } from "./adapters/rest-base.js";
 import type { BrokerAdapter, FetchFn } from "./adapters/types.js";
 import { HaeloCore } from "./core.js";
 import { SecretOAuthProvider } from "./oauth.js";
+import { viemReader, viemSender } from "./chain/executor.js";
+import { loadLocalSigner, signerAddress } from "./chain/signer.js";
+import { ROBINHOOD_MAINNET } from "./chain/uniswap.js";
 import { openSecretStore } from "./secrets.js";
 import type { LoadedConfig } from "./policy/load.js";
 import type { HaeloConfig } from "./policy/schema.js";
@@ -49,6 +54,21 @@ export function buildAdapter(config: HaeloConfig, stateDir: string, opts: BuildO
           fallbackSpreadBps: config.shadow.fallbackSpreadBps,
           ...(opts.fetch ? { fetch: opts.fetch } : {}),
           ...(opts.now ? { now: opts.now } : {}),
+        }),
+      );
+    }
+    case "robinhood-chain": {
+      const local = loadLocalSigner(env, { privateKeyEnv: b.privateKeyEnv, keystoreEnv: b.keystoreEnv });
+      const reader = viemReader(b.rpcUrl, ROBINHOOD_MAINNET.chainId);
+      const sender = local ? viemSender(b.rpcUrl, local.account, ROBINHOOD_MAINNET.chainId) : undefined;
+      const address = signerAddress(local, env, b.addressEnv);
+      const tokens = Object.entries(b.tokens).map(([symbol, token]) => ({ symbol, address: getAddress(token) }));
+      return new RestAdapter(
+        new RobinhoodChainBroker(reader, sender, {
+          deadlineSeconds: b.deadlineSeconds,
+          maxSlippageBps: config.rails.maxSlippageBps,
+          tokens,
+          ...(address ? { address } : {}),
         }),
       );
     }
@@ -98,7 +118,7 @@ export function offlineAdapter(config: HaeloConfig): BrokerAdapter {
   };
   return {
     id: config.broker.type,
-    supportsPaper: config.broker.type === "alpaca",
+    supportsPaper: config.broker.type === "alpaca" || config.broker.type === "robinhood-chain",
     dynamicTools: false,
     shadowReadTools: {},
     connect: async () => undefined,

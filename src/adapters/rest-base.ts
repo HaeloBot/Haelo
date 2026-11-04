@@ -45,6 +45,8 @@ export const NATIVE_TOOLS: ToolDef[] = [
         notional_usd: { type: "number", exclusiveMinimum: 0 },
         limit_price: { type: "number", exclusiveMinimum: 0 },
         time_in_force: { type: "string", enum: ["day", "gtc"] },
+        slippage_bps: { type: "number", minimum: 0, description: "Max slippage in basis points. Refused when it exceeds rails.maxSlippageBps." },
+        confirm: { type: "boolean", description: "Required true to broadcast a live Robinhood Chain swap. Ignored by other brokers." },
         rationale: { type: "string", description: "Why you are placing this order. Stored in the audit log and shown to the human." },
       },
       required: ["symbol", "side"],
@@ -168,6 +170,8 @@ export class RestAdapter implements BrokerAdapter {
     intent.type = args["type"] === "limit" ? "limit" : "market";
     if (typeof args["limit_price"] === "number") intent.limitPrice = args["limit_price"];
     else delete intent.limitPrice;
+    if (typeof args["slippage_bps"] === "number") intent.slippageBps = args["slippage_bps"];
+    intent.confirm = args["confirm"] === true;
     delete intent.stopPrice;
     return intent;
   }

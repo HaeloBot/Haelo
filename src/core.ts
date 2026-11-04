@@ -101,6 +101,12 @@ export const HAELO_TOOLS: ToolDef[] = [
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
   },
+  {
+    name: "haelo_kill_switch",
+    description: "Stop the agent now: drop to shadow and cancel open broker orders where the broker can cancel them. This does not promote, approve, or edit policy. A human must promote the agent again before live orders resume.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false },
+  },
 ];
 
 const HIDDEN_EFFECTS = new Set(["transfer", "unknown"]);
@@ -620,11 +626,16 @@ export class HaeloCore {
       });
     }
 
-    // paper, micro, standard: real execution.
+    // paper, micro, standard: real execution. Paper on Robinhood Chain quotes on-chain and does not sign.
     const mode: BrokerMode = rung === "paper" ? "paper" : "live";
     if (mode === "live" && !this.config.live.enabled) {
       this.audit.append("decision", this.decisionRecord(a, "block", { reason: "live trading is disabled (live.enabled: false)", rationale }));
       return text({ blocked: true, reason: "Live trading is disabled in the Haelo policy (live.enabled: false). Nothing was sent.", decision_id: a.decisionId }, true);
+    }
+    const confirmBlock = mode === "live" ? this.chainConfirmBlock(args) : undefined;
+    if (confirmBlock) {
+      this.audit.append("decision", this.decisionRecord(a, "block", { reason: confirmBlock, rationale }));
+      return text({ blocked: true, reason: confirmBlock, decision_id: a.decisionId }, true);
     }
     const res = await this.adapter.executeOrder(tool.name, args, intent, mode);
     if (res.isError) {
@@ -633,6 +644,7 @@ export class HaeloCore {
         s.ladder.stats.invalid++;
       });
       this.audit.append("decision", this.decisionRecord(a, "broker_error", { mode, result: collectResultText(res).slice(0, 500), rationale }));
+      if (mode === "live") await this.noteChainLive(false);
       return res;
     }
     await this.store.update((s) => {
@@ -640,6 +652,7 @@ export class HaeloCore {
       s.ladder.stats.accepted++;
       this.bumpUsage(s, intent.symbol, notional);
     });
+    if (mode === "live") await this.noteChainLive(true);
     this.audit.append("decision", this.decisionRecord(a, mode === "paper" ? "paper_order" : "live_order", { mode, result: collectResultText(res).slice(0, 1500), rationale }));
     await this.afterAccepted();
     return { ...res, content: [...res.content, { type: "text", text: `[haelo] rung=${rung} mode=${mode} decision_id=${a.decisionId}` }] };
@@ -755,6 +768,8 @@ export class HaeloCore {
     const a = await this.assess(tool, p.args, undefined, state);
     if (a.violations.length > 0) return fail(`Re-check failed: ${a.violations.map((v) => v.message).join(" ")}`);
     if (!this.config.live.enabled) return fail("Live trading is disabled in the Haelo policy (live.enabled: false). Nothing was sent.");
+    const confirmBlock = this.chainConfirmBlock(p.args);
+    if (confirmBlock) return fail(confirmBlock);
     const intent = a.intent as OrderIntent;
     const res = await this.adapter.executeOrder(tool.name, p.args, intent, "live");
     const ok = !res.isError;
@@ -769,8 +784,32 @@ export class HaeloCore {
       return { ...x };
     });
     this.audit.append(ok ? "proposal_executed" : "proposal_failed", { proposal_id: id, by, decision_id: a.decisionId, result: collectResultText(res).slice(0, 800) });
+    await this.noteChainLive(ok);
     if (ok) await this.afterAccepted();
     return out;
+  }
+
+  /** Live Robinhood Chain sends need an explicit confirm flag on the call. Other brokers ignore it. */
+  private chainConfirmBlock(args: Args): string | undefined {
+    if (this.config.broker.type !== "robinhood-chain") return undefined;
+    if (args["confirm"] === true) return undefined;
+    return "Live Robinhood Chain swaps require confirm: true on the order, and live.enabled: true. Nothing was signed.";
+  }
+
+  /** Count consecutive live chain failures and drop to shadow when the policy threshold is hit. */
+  private async noteChainLive(ok: boolean): Promise<void> {
+    if (this.config.broker.type !== "robinhood-chain") return;
+    const limit = this.config.broker.maxConsecutiveErrors;
+    let streak = 0;
+    await this.store.update((s) => {
+      if (ok) {
+        s.consecutiveLiveErrors = 0;
+        return;
+      }
+      s.consecutiveLiveErrors = (s.consecutiveLiveErrors ?? 0) + 1;
+      streak = s.consecutiveLiveErrors;
+    });
+    if (!ok && streak >= limit) await this.demote("live_errors", `${streak} consecutive live chain errors`);
   }
 
   // ---------------------------------------------------------------- ladder: demotion, promotion, drawdown
@@ -807,9 +846,9 @@ export class HaeloCore {
     }
   }
 
-  async panic(): Promise<{ from: Rung; to: Rung } | undefined> {
-    this.audit.append("panic", { by: "human" });
-    const moved = await this.demote("panic", "human pressed panic", "human");
+  async panic(by: "auto" | "human" = "human"): Promise<{ from: Rung; to: Rung } | undefined> {
+    this.audit.append("panic", { by });
+    const moved = await this.demote("panic", by === "human" ? "human pressed panic" : "kill switch", by);
     if (!moved) await this.cancelOpen(this.store.load().ladder.rung === "shadow" ? "shadow" : this.store.load().ladder.rung);
     return moved;
   }
@@ -951,7 +990,10 @@ export class HaeloCore {
         return text({
           rung: st.rung,
           next_rung: st.nextRung,
-          description: RUNG_DESCRIPTIONS[st.rung],
+          description:
+            this.adapter.id === "robinhood-chain" && st.rung === "paper"
+              ? "Orders are priced from on-chain Uniswap quotes and are not signed. Nothing is broadcast."
+              : RUNG_DESCRIPTIONS[st.rung],
           caps_today: st.capsToday,
           pending_proposals: st.pendingProposals,
           promotion_frozen_until: st.frozenUntil,
@@ -1005,6 +1047,11 @@ export class HaeloCore {
       }
       case "haelo_shadow_report":
         return text(await this.shadowReport());
+      case "haelo_kill_switch": {
+        const moved = await this.panic("auto");
+        const rung = this.store.load().ladder.rung;
+        return text({ stopped: true, from: moved?.from ?? rung, to: moved?.to ?? rung, note: "New live orders stay off until a human promotes the agent." });
+      }
       case "haelo_request_promotion": {
         const r = await this.promotionReport();
         const ap = this.config.ladder.autoPromote;

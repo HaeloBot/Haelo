@@ -34,7 +34,7 @@ const HELP = `haelo ${VERSION}: an autonomy ladder for AI trading agents
 Usage: haelo <command> [options]
 
 Setup
-  init [--broker alpaca|robinhood-crypto|mcp-upstream|mock] [--force]   Write haelo.yaml and create the state directory
+  init [--broker alpaca|robinhood-crypto|robinhood-chain|mcp-upstream|mock] [--force]   Write haelo.yaml and create the state directory
   policy lock | show | check                                          Lock the policy hash, print it, or compare it to the lock
   auth                                                                Sign in to an OAuth-protected upstream MCP server (Robinhood)
 
@@ -124,7 +124,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       case "init": {
         const { values } = parseArgs({ args: rest, options: { ...common, broker: { type: "string" }, dir: { type: "string" }, "state-dir": { type: "string" } }, allowPositionals: false });
         const broker = (values.broker ?? "alpaca") as TemplateBroker;
-        if (!["alpaca", "robinhood-crypto", "mcp-upstream", "mock"].includes(broker)) throw new Error(`Unknown broker "${broker}".`);
+        if (!["alpaca", "robinhood-crypto", "robinhood-chain", "mcp-upstream", "mock"].includes(broker)) throw new Error(`Unknown broker "${broker}".`);
         const dir = resolve(io.cwd, values.dir ?? ".");
         const target = join(dir, "haelo.yaml");
         if (existsSync(target) && !values.force) throw new Error(`${target} already exists. Use --force to overwrite.`);

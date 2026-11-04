@@ -19,6 +19,8 @@ export const railsSchema = z.object({
   allowShort: z.boolean().default(false),
   /** Largest single-symbol share of total equity after the order, in percent. */
   maxPositionPct: z.number().positive().max(100).default(100),
+  /** Largest slippage, in basis points, a Robinhood Chain swap may request. */
+  maxSlippageBps: z.number().int().min(0).max(9_999).default(100),
 });
 
 export const rungOverrideSchema = z
@@ -124,6 +126,20 @@ export const brokerSchema = z.discriminatedUnion("type", [
     paperBaseUrl: z.string().url().default("https://paper-api.alpaca.markets"),
     liveBaseUrl: z.string().url().default("https://api.alpaca.markets"),
     dataBaseUrl: z.string().url().default("https://data.alpaca.markets"),
+  }),
+  z.object({
+    type: z.literal("robinhood-chain"),
+    network: z.literal("mainnet").default("mainnet"),
+    /** Public RPC. The default is Robinhood's documented mainnet endpoint. */
+    rpcUrl: z.string().url().default("https://rpc.mainnet.chain.robinhood.com"),
+    privateKeyEnv: z.string().default("HAELO_PRIVATE_KEY"),
+    keystoreEnv: z.string().default("HAELO_KEYSTORE"),
+    addressEnv: z.string().default("HAELO_ADDRESS"),
+    deadlineSeconds: z.number().int().positive().max(3600).default(120),
+    /** Consecutive live send failures before an automatic drop to shadow. */
+    maxConsecutiveErrors: z.number().int().positive().default(3),
+    /** Extra ERC-20s, symbol to address. WETH and USDG are built in. */
+    tokens: z.record(z.string().min(1), z.string().regex(/^0x[0-9a-fA-F]{40}$/)).default({}),
   }),
   z.object({
     type: z.literal("robinhood-crypto"),

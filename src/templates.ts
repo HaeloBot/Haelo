@@ -1,4 +1,4 @@
-export type TemplateBroker = "alpaca" | "robinhood-crypto" | "mcp-upstream" | "mock";
+export type TemplateBroker = "alpaca" | "robinhood-crypto" | "robinhood-chain" | "mcp-upstream" | "mock";
 
 const COMMON = `
 # LIVE TRADING IS OFF until you opt in here. While false, nothing is ever sent to a live account:
@@ -26,6 +26,7 @@ rails:
   allowAssetClasses: [equity, crypto]
   allowShort: false
   maxPositionPct: 100       # max share of total equity in one symbol after an order
+  maxSlippageBps: 100       # Robinhood Chain swaps: 1% cap. A larger slippage_bps is refused
 
 # Tighter caps for rungs below standard.
 rungs:
@@ -92,6 +93,12 @@ const BROKERS: Record<TemplateBroker, string> = {
   type: alpaca
   # Credentials come from the environment (see .env.example). A free paper account is enough to start.
   feed: iex
+`,
+  "robinhood-chain": `broker:
+  type: robinhood-chain
+  # Uniswap v3 on Robinhood Chain mainnet (chain 4663). See docs/CHAIN.md.
+  # Quotes need no key. A live swap also needs live.enabled, confirm: true, and HAELO_PRIVATE_KEY.
+  network: mainnet
 `,
   "robinhood-crypto": `broker:
   type: robinhood-crypto

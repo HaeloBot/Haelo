@@ -76,7 +76,7 @@ haelo doctor
 haelo serve --stdio
 ```
 
-Robinhood Crypto and the upstream MCP path are in [docs/ADAPTERS.md](docs/ADAPTERS.md). Neither has been run against Robinhood by the author. Start at `shadow`.
+Robinhood Crypto and the upstream MCP path are in [docs/ADAPTERS.md](docs/ADAPTERS.md). Neither has been run against Robinhood by the author. Robinhood Chain swaps (Uniswap v3 on chain 4663) are in [docs/CHAIN.md](docs/CHAIN.md). Start at `shadow`.
 
 Connect an agent with [`examples/claude-desktop.stdio.json`](examples/claude-desktop.stdio.json) or [`examples/cursor.mcp.json`](examples/cursor.mcp.json).
 
@@ -100,7 +100,7 @@ The website playground runs the same policy, ladder, and audit code in the brows
 flowchart LR
   A[AI agent] -- MCP --> G[Haelo gateway]
   G --> C[Classify, policy, ladder, audit]
-  C --> B[Alpaca / Robinhood Crypto / upstream MCP]
+  C --> B[Alpaca / Robinhood Crypto / Robinhood Chain / upstream MCP]
   H[Human CLI] --> C
 ```
 
@@ -129,6 +129,7 @@ haelo policy lock | check | show
 | Alpaca adapter | Real client for the documented endpoints. Checked against a local mock only, not yet against Alpaca |
 | Robinhood Crypto client | Ed25519 signing checked against the official example. Endpoints checked against a mock only |
 | Upstream MCP proxy | Streamable HTTP and OAuth 2.1 + PKCE checked against a local mock IdP. Not checked against Robinhood |
+| Robinhood Chain | Uniswap v3 router and quoter from Uniswap's chain 4663 list. Quotes read from the public RPC. Live swaps are implemented and covered by a mocked chain. No testnet router is published, so no on-chain swap has been sent |
 | Token storage | OS keychain when one exists, otherwise a mode `0600` file |
 | Shadow fills | Quote ± slippage. A good shadow result is weak evidence about live results |
 | Wash-sale and lot checks | Heuristic warnings, not tax advice. Crypto wash-sale checks are off by default |
@@ -155,7 +156,8 @@ The agent is treated as untrusted. Caps bound the loss. They do not make a trade
 
 Known gaps, not dates:
 
-- The Alpaca and Robinhood adapters have not been run against those live services. `haelo doctor` and the smoke scripts are the way to check a real account.
+- The Alpaca and Robinhood Crypto adapters have not been run against those live services. `haelo doctor` and the smoke scripts are the way to check a real account.
+- Robinhood Chain testnet (46630) has no published Uniswap router. Mainnet quotes can be checked with `haelo doctor`. A live swap still needs your own funded key. See [docs/CHAIN.md](docs/CHAIN.md).
 - Robinhood does not publish its agentic-trading tool schemas, so the upstream proxy fails closed when it cannot parse an order.
 - `$HAELO` on the website has no contract address until `website/public/config.json` is filled in. The page shows "CA coming soon" until then.
 

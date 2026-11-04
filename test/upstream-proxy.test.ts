@@ -111,7 +111,7 @@ describe("proxying an upstream MCP server (mock upstream over real Streamable HT
     h = await upstreamHarness();
     const names = h.core.toolDefs().map((t) => t.name);
     expect(names.filter((n) => n.startsWith("haelo_")).sort()).toEqual(
-      ["haelo_explain_block", "haelo_get_proposal", "haelo_preflight", "haelo_record_rationale", "haelo_request_promotion", "haelo_shadow_report", "haelo_status"].sort(),
+      ["haelo_explain_block", "haelo_get_proposal", "haelo_kill_switch", "haelo_preflight", "haelo_record_rationale", "haelo_request_promotion", "haelo_shadow_report", "haelo_status"].sort(),
     );
     for (const n of names) expect(n).not.toMatch(/approve|promote$|set_policy|demote/);
     const req = await h.core.callTool("haelo_request_promotion", {});

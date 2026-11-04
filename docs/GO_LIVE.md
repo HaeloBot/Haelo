@@ -59,5 +59,6 @@ Every `FAIL` must be fixed. Read every `WARN`.
 | Alpaca | Against a local mock of the documented API. `haelo doctor` and `npm run smoke:alpaca` verify it against the real API with **your** keys. |
 | Robinhood Crypto API | Signing verified against the official documentation vector; endpoints against a mock. `haelo doctor` / `npm run smoke:robinhood-crypto` make real signed GETs with your keys. |
 | Robinhood agentic MCP | OAuth 2.1 + PKCE flow verified against a local spec-compliant mock IdP; tool schemas are undocumented, so stay at `propose` until you have read real responses in the audit log. |
+| Robinhood Chain Uniswap v3 | Router and quoter addresses come from Uniswap's chain 4663 deployment list and were read back on the public RPC (factory and WETH match). Quotes are on-chain. A live swap still needs your key, `live.enabled`, and `confirm: true`. Testnet has no published Uniswap router, so no testnet swap has been sent. See [CHAIN.md](CHAIN.md). |
 
 Nothing here has been run against a real broker account by the author. You are the first live test. Start small.

@@ -1,5 +1,8 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { bestQuote, viemReader } from "./chain/executor.js";
+import { ROBINHOOD_MAINNET } from "./chain/uniswap.js";
+import { loadLocalSigner } from "./chain/signer.js";
 import { AlpacaBroker } from "./adapters/alpaca.js";
 import { McpUpstreamAdapter } from "./adapters/mcp-upstream.js";
 import { RobinhoodCryptoBroker } from "./adapters/robinhood-crypto.js";
@@ -114,6 +117,29 @@ export async function runDoctor(l: LoadedConfig, opts: DoctorOptions): Promise<D
       } catch (e) {
         add(area, "market data", "fail", errorMessage(e));
       }
+    }
+  } else if (b.type === "robinhood-chain") {
+    try {
+      const local = loadLocalSigner(env, { privateKeyEnv: b.privateKeyEnv, keystoreEnv: b.keystoreEnv });
+      add(
+        "robinhood chain",
+        "signer",
+        local ? "pass" : opts.live ? "fail" : "warn",
+        local ? `loaded from ${local.kind}, address ${local.account.address}` : `no ${b.privateKeyEnv} or ${b.keystoreEnv}; quotes work, live sends do not`,
+      );
+    } catch (e) {
+      add("robinhood chain", "signer", "fail", errorMessage(e));
+    }
+    try {
+      const reader = viemReader(b.rpcUrl);
+      const id = await reader.getChainId();
+      add("robinhood chain", "chain id", id === ROBINHOOD_MAINNET.chainId ? "pass" : "fail", `eth_chainId ${id}, expected ${ROBINHOOD_MAINNET.chainId}`);
+      const code = await reader.getBytecode(ROBINHOOD_MAINNET.swapRouter02);
+      add("robinhood chain", "SwapRouter02", code && code !== "0x" ? "pass" : "fail", ROBINHOOD_MAINNET.swapRouter02);
+      const quote = await bestQuote(reader, ROBINHOOD_MAINNET.weth, ROBINHOOD_MAINNET.usdg, 10n ** 15n);
+      add("robinhood chain", "on-chain quote", quote.amountOut > 0n ? "pass" : "fail", `0.001 WETH quotes ${quote.amountOut.toString()} USDG base units at fee ${quote.fee}`);
+    } catch (e) {
+      add("robinhood chain", "rpc", "fail", errorMessage(e));
     }
   } else if (b.type === "robinhood-crypto") {
     const key = env[b.apiKeyEnv];

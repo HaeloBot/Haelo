@@ -95,6 +95,8 @@ export interface PersistedState {
   /** Set when upstream tools changed from the pin. Orders are refused until `haelo pin approve`. */
   drift?: { detectedAt: string; hash: string; added: string[]; removed: string[]; changed: string[]; reason?: string };
   proposals: Proposal[];
+  /** Consecutive live Robinhood Chain send failures. Reset after a success. */
+  consecutiveLiveErrors?: number;
 }
 
 /** Persistence for the ladder state. `update` must be atomic across processes. */
