@@ -4,7 +4,7 @@ import { Meta } from "../components/Meta.js";
 export default function Pricing(): React.ReactElement {
   return (
     <article className="page">
-      <Meta title="Pricing — Haelo" description="Haelo is MIT licensed and free. You pay your broker, if you trade. The project does not custody keys." />
+      <Meta title="Pricing: Haelo" description="Haelo is MIT licensed and free. You pay your broker, if you trade. The project does not custody keys." />
       <p className="kicker">Open source</p>
       <h1 className="display">
         Zero.

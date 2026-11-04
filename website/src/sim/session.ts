@@ -11,7 +11,7 @@
  * - open a socket to a broker
  * - treat a paper or live rung as a real order. Paper fills stay in the shadow ledger
  *   and are labelled as stand-ins. Live rungs are refused, matching `live.enabled: false`,
- *   and stay refused even if you opt in — the CLI is the only place an order can leave.
+ *   and stay refused even if you opt in. The CLI is the only place an order can leave.
  */
 import { nextEntry, verifyEntries, type AuditEntry, type VerifyResult } from "../../../src/audit.js";
 import { householdChecks, type PreflightCheck } from "../../../src/household.js";

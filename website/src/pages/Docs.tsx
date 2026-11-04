@@ -49,7 +49,7 @@ export default function Docs(): React.ReactElement {
   const current = TABS.find((t) => t.id === tab) ?? TABS[0];
   return (
     <article className="page prose">
-      <Meta title="Docs — Haelo" description="Install Haelo and connect Claude Desktop or Cursor. Live trading stays on the local CLI." />
+      <Meta title="Docs: Haelo" description="Install Haelo and connect Claude Desktop or Cursor. Live trading stays on the local CLI." />
       <p className="kicker">Quickstart</p>
       <h1 className="display">Install it locally.</h1>
       <p>The website does not hold a broker session. These commands are the real gateway. Node 22.13 or newer.</p>

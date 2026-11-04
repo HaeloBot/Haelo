@@ -12,7 +12,7 @@ const ROWS = [
 export default function Security(): React.ReactElement {
   return (
     <article className="page">
-      <Meta title="Security — Haelo" description="What Haelo defends against, and the risks it does not remove. The agent is assumed untrusted." />
+      <Meta title="Security: Haelo" description="What Haelo defends against, and the risks it does not remove. The agent is assumed untrusted." />
       <p className="kicker">Threat model</p>
       <h1 className="display">
         Assume the

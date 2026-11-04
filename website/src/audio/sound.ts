@@ -407,7 +407,7 @@ class SoundEngine {
     this.demote();
   }
 
-  /** 0–1 scroll speed. Opens the music filter while the page is moving. */
+  /** Scroll speed from 0 to 1. Opens the music filter while the page is moving. */
   setScrollEnergy(amount: number): void {
     const next = Math.max(0, Math.min(1, amount));
     if (next > this.energyTarget) this.energyTarget = next;

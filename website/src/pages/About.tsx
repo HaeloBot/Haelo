@@ -19,14 +19,14 @@ const FAQ = [
   },
   {
     q: "Who wrote it?",
-    a: "Kavindu Diluka. The source is MIT licensed at github.com/HaeloBot/Haelo. RepoScan notes live in docs/ZAUTH.md — the repository does not invent contributors to look older than it is.",
+    a: "Kavindu Diluka. The source is MIT licensed at github.com/HaeloBot/Haelo. RepoScan notes live in docs/ZAUTH.md. The repository does not invent contributors to look older than it is.",
   },
 ];
 
 export default function About(): React.ReactElement {
   return (
     <article className="page">
-      <Meta title="About — Haelo" description="Haelo is an MCP gateway: an autonomy ladder between an AI trading agent and a broker." />
+      <Meta title="About: Haelo" description="Haelo is an MCP gateway: an autonomy ladder between an AI trading agent and a broker." />
       <p className="kicker">About</p>
       <h1 className="display">
         A gateway,
@@ -34,7 +34,7 @@ export default function About(): React.ReactElement {
         not a guru.
       </h1>
       <p className="lede">
-        Haelo is an MCP server. Claude, Cursor, or your own client speaks MCP. Haelo classifies the call, evaluates it against a locked policy, and either simulates it, holds it, or — only after you opt in — forwards it. The ladder is the product.
+        Haelo is an MCP server. Claude, Cursor, or your own client speaks MCP. Haelo classifies the call, evaluates it against a locked policy, and either simulates it, holds it, or forwards it only after you opt in. The ladder is the product.
       </p>
       <div className="faq">
         {FAQ.map((item) => (

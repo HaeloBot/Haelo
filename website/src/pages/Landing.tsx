@@ -13,29 +13,29 @@ gsap.registerPlugin(ScrollTrigger);
 
 const RUNGS = [
   {
-    kicker: "00  —  No capital",
+    kicker: "00. No capital",
     title: "Shadow",
     body: "Fills are simulated against live quotes, with slippage and fees. The broker never sees the order.",
   },
   {
-    kicker: "01  —  Broker paper",
+    kicker: "01. Broker paper",
     title: "Paper",
     body: "Orders go to the broker's paper environment when it has one. Still not your money.",
   },
   {
-    kicker: "02  —  A human reads it",
+    kicker: "02. A human reads it",
     title: "Propose",
     body: "Every order is held. The approval card is built from the order itself, not from the agent's story.",
   },
   {
-    kicker: "03  —  Live, tiny",
+    kicker: "03. Live, tiny",
     title: "Micro",
     body: "Live under a much tighter cap. The default is $25 an order, $100 a day, five orders. Live stays off until you opt in.",
   },
   {
-    kicker: "04  —  Your rails",
+    kicker: "04. Your rails",
     title: "Standard",
-    body: "Live under the limits you wrote down. Not unlimited. The caps, the list, the audit chain — still on.",
+    body: "Live under the limits you wrote down. Not unlimited. The caps, the list, and the audit chain stay on.",
   },
 ];
 
@@ -100,7 +100,7 @@ export default function Landing(): React.ReactElement {
   return (
     <>
       <Meta
-        title="Haelo — An autonomy ladder for AI trading agents"
+        title="Haelo: an autonomy ladder for AI trading agents"
         description="Haelo sits between an AI agent and a broker. Shadow first. Live only after rules you wrote down are kept."
       />
       {intro ? (

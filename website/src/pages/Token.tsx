@@ -31,7 +31,7 @@ export default function Token(): React.ReactElement {
   return (
     <article className="token">
       <Meta
-        title={`$${symbol} — Haelo`}
+        title={`$${symbol}: Haelo`}
         description={`$${symbol} is the community token for the Haelo project. It is launching on ponsfamily.com. Not financial advice.`}
       />
       <section className="token-hero" data-fx="level" aria-label={`${symbol} token`}>

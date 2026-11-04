@@ -80,7 +80,7 @@ export default function Playground(): React.ReactElement {
   return (
     <div className="pg">
       <Meta
-        title="Playground — Haelo"
+        title="Playground: Haelo"
         description="Run Haelo's policy engine, autonomy ladder, and hash-chained audit log in the browser. Shadow mode only. No broker keys."
       />
       <section className="panel">
@@ -131,7 +131,7 @@ export default function Playground(): React.ReactElement {
                 const q = market.quotes[sym];
                 return (
                   <span key={sym}>
-                    {sym} {q ? q.mid.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}
+                    {sym} {q ? q.mid.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "n/a"}
                   </span>
                 );
               })
@@ -154,7 +154,7 @@ export default function Playground(): React.ReactElement {
               <span>
                 Decisions {snap.stats.decisions} · breaches {snap.stats.breaches}
               </span>
-              {snap.drift ? <span>Tool drift — orders frozen</span> : null}
+              {snap.drift ? <span>Tool drift: orders frozen</span> : null}
               {snap.frozenUntil ? <span>Frozen until {snap.frozenUntil}</span> : null}
             </p>
             <ul className="checks">
@@ -162,7 +162,7 @@ export default function Playground(): React.ReactElement {
                 <li key={c.name}>
                   <span className={c.ok ? "dot ok" : "dot"} aria-hidden="true" />
                   <span>
-                    {c.ok ? "Pass" : "Hold"} — {c.detail}
+                    {c.ok ? "Pass" : "Hold"}: {c.detail}
                   </span>
                 </li>
               ))}
@@ -296,7 +296,7 @@ export default function Playground(): React.ReactElement {
           {snap?.tape.map((item) => (
             <article key={item.id} className={item.tone}>
               <strong>
-                {item.rung} — {item.title}
+                {item.rung}: {item.title}
               </strong>
               <p>{item.detail}</p>
             </article>
