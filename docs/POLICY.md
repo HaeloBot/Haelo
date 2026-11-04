@@ -4,7 +4,7 @@ Secrets never go here. Config names the **environment variables** that hold them
 
 ```yaml
 version: 1
-stateDir: ~/.haelo             # audit.jsonl, state.json, policy.lock, http-token, oauth/
+stateDir: ~/.haelo             # haelo.db (or audit.jsonl + state.json), policy.lock, http-token, secrets/
 ```
 
 ## `live`
@@ -25,16 +25,26 @@ stateDir: ~/.haelo             # audit.jsonl, state.json, policy.lock, http-toke
 
 ## `broker`
 
-| `type` | Fields |
-|---|---|
-| `alpaca` | `paperKeyIdEnv`, `paperSecretEnv`, `liveKeyIdEnv`, `liveSecretEnv` (env var names), `feed` (`iex`/`sip`/`delayed_sip`), `paperBaseUrl`, `liveBaseUrl`, `dataBaseUrl` |
-| `robinhood-crypto` | `apiKeyEnv`, `privateKeyEnv` (base64 Ed25519 seed), `apiVersion` (`v1`/`v2`), `baseUrl` |
-| `robinhood-chain` | Uniswap v3 on Robinhood Chain. `network` (`mainnet`), `rpcUrl`, `privateKeyEnv` (`HAELO_PRIVATE_KEY`), `keystoreEnv` (`HAELO_KEYSTORE`), `addressEnv`, `deadlineSeconds`, `maxConsecutiveErrors`, `tokens`. See [CHAIN.md](CHAIN.md). |
-| `mcp-upstream` | exactly one of `url` / `command` (+`args`, `passEnv`); `bearerTokenEnv` (else OAuth for URLs, via `haelo auth`); `oauthPort`; `quoteTools.{equity,crypto}`, `accountTool`, `positionsTool`, `ordersTool`, `taxLotsTool`, `cancelAllTool`; `toolOverrides: { tool: read\|order_place\|order_cancel\|transfer\|blocked }` |
+One venue: `type: solana`. See [SOLANA.md](SOLANA.md).
+
+| Field | Default | Meaning |
+|---|---|---|
+| `rpcUrl` | `https://api.mainnet-beta.solana.com` | Mainnet-beta RPC. Overridden by the env var named in `rpcUrlEnv` |
+| `rpcUrlEnv` | `HAELO_RPC_URL` | Env var for a private RPC URL (its value is never printed) |
+| `jupiterBaseUrl` | `https://api.jup.ag/swap/v2` | Jupiter Swap API V2 |
+| `jupiterApiKeyEnv` | `HAELO_JUPITER_API_KEY` | Optional API key; keyless tier otherwise |
+| `privateKeyEnv` | `HAELO_PRIVATE_KEY` | Base58 secret key or JSON byte array |
+| `keypairFileEnv` | `HAELO_KEYPAIR` | Path to a `chmod 600` keypair file |
+| `addressEnv` | `HAELO_ADDRESS` | Watch-only wallet for balances and paper simulation |
+| `reserveSol` | 0.02 | SOL a sell must leave for fees |
+| `maxFeeSol` | 0.01 | Most SOL a swap may cost beyond the SOL it sells, enforced by simulation |
+| `paperSimulate` | true | Paper orders also simulate the real transaction when a wallet is known |
+| `maxConsecutiveErrors` | 3 | Failed live swaps in a row before an automatic drop to shadow |
+| `tokens` | `{}` | Extra SPL tokens, symbol to mint. `SOL`, `USDC`, `JUP`, `BONK` are built in |
 
 ## `agent`
 
-`accountId`: the only account the agent may trade. Orders naming another account are blocked.
+`accountId`: the agent wallet's address. `haelo doctor` fails if the loaded key belongs to another wallet.
 
 ## `rails` (standard rung) and `rungs.<rung>` (tighter only)
 
@@ -46,10 +56,10 @@ stateDir: ~/.haelo             # audit.jsonl, state.json, policy.lock, http-toke
 | `symbolCooldownSeconds` | 0 | min gap between orders in one symbol |
 | `allowSymbols` / `blockSymbols` | `[]` | empty allow = any not blocked |
 | `allowOrderTypes` | `[market, limit]` | |
-| `allowAssetClasses` | `[equity, crypto]` | options are off unless added |
+| `allowAssetClasses` | `[crypto]` | every Solana swap is crypto |
 | `allowShort` | false | selling more than held is blocked |
 | `maxPositionPct` | 100 | single-symbol share of equity after the order |
-| `maxSlippageBps` | 100 | Robinhood Chain: largest slippage a swap may request. Above this is a breach |
+| `maxSlippageBps` | 100 | largest slippage a swap may request. Above this is a breach |
 
 `rungs.micro` defaults to `maxOrderUsd: 25, maxDailyUsd: 100, maxOrdersPerDay: 5`. A rung override can never exceed the standard rail; `allowSymbols` overrides intersect with the global list.
 
@@ -60,8 +70,8 @@ Violations are `breach` (hard rule: counts toward demotion) or `soft` (rate limi
 * `start`: initial rung (default `shadow`).
 * `autoPromote: { enabled: false, maxRung: propose }`: optional automatic promotion, never above `maxRung`.
 * `criteria.<rung>` (to leave that rung): `minDays`, `minDecisions`, `maxInvalidRate`, `maxBreaches`, `maxInjectionFollows`, `maxDrawdownPct`. All must hold; also no unresolved tool drift and not frozen.
-* `demotion`: `onBreach` (`shadow`), `onDrawdown` (`one_rung`), `onToolDrift` (`shadow`), `onInjectionFollow` (`one_rung`), `cancelOpenOrders` (true), `cooldownHours` (24). Demotion never moves an agent *up*; a target the broker cannot provide (paper on a broker without paper) maps to the next lower rung.
-* `drawdown.maxPct` (10): measured on the shadow ledger at `shadow`, on broker equity otherwise.
+* `demotion`: `onBreach` (`shadow`), `onDrawdown` (`one_rung`), `onToolDrift` (`shadow`), `onInjectionFollow` (`one_rung`), `cancelOpenOrders` (true), `cooldownHours` (24). Demotion never moves an agent *up*; Solana provides every rung, so targets map directly.
+* `drawdown.maxPct` (10): measured on the shadow ledger at `shadow`, on the wallet's USDC value (USDC plus tokens priced through Jupiter) otherwise.
 
 ## `shadow`
 

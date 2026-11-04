@@ -1,11 +1,10 @@
 {
   "mcpServers": {
     "haelo": {
-      "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/haelo/dist/cli.js", "serve", "--stdio", "--config", "/ABSOLUTE/PATH/TO/haelo.yaml"],
+      "command": "npx",
+      "args": ["-y", "haelo-solana", "serve", "--stdio", "--config", "/ABSOLUTE/PATH/TO/haelo.yaml"],
       "env": {
-        "ALPACA_PAPER_KEY_ID": "PK...",
-        "ALPACA_PAPER_SECRET_KEY": "..."
+        "HAELO_RPC_URL": ""
       }
     }
   }

@@ -1,90 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { parseConfig } from "../../src/policy/load.js";
-import { gateOrder } from "../src/chain/gate.js";
-
-const yaml = `version: 1
-broker: { type: robinhood-chain }
-live: { enabled: true }
-rails:
-  maxOrderUsd: 100
-  maxDailyUsd: 200
-  maxSlippageBps: 50
-  allowSymbols: [WETH/USDG]
-  allowAssetClasses: [crypto]
-`;
+import { gateOrder, type GateInput } from "../src/solana/gate.js";
 
 const usage = { ordersToday: 0, notionalToday: 0, recentOrderTimes: [], lastOrderBySymbol: {} };
+const live = parseConfig("version: 1\nbroker: { type: solana }\nlive: { enabled: true }\nrails: { maxOrderUsd: 100, allowSymbols: [SOL/USDC], maxSlippageBps: 100 }\nladder: { start: micro }\n");
+const off = parseConfig("version: 1\nbroker: { type: solana }\nrails: { maxOrderUsd: 100 }\n");
+const base: GateInput = { config: live, rung: "micro", symbol: "SOL/USDC", side: "buy", notionalUsd: 20, slippageBps: 50, usage, nowMs: Date.now(), live: true, fundsAck: true, walletConnected: true };
 
-describe("client policy gate", () => {
-  const config = parseConfig(yaml);
-
-  it("blocks an order over the cap before any wallet prompt", () => {
-    const result = gateOrder({
-      config,
-      rung: "micro",
-      symbol: "WETH/USDG",
-      side: "buy",
-      notionalUsd: 500,
-      slippageBps: 30,
-      usage,
-      nowMs: Date.now(),
-      live: true,
-      fundsAck: true,
-      chainId: 4663,
-    });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toMatch(/per-order cap|exceeds/);
+describe("browser policy gate", () => {
+  it("passes a small live swap on the allow-list with a connected wallet", () => {
+    expect(gateOrder(base).ok).toBe(true);
   });
-
-  it("blocks a token that is not on the allow list", () => {
-    const result = gateOrder({
-      config,
-      rung: "shadow",
-      symbol: "DOGE/USDG",
-      side: "buy",
-      notionalUsd: 10,
-      slippageBps: 30,
-      usage,
-      nowMs: Date.now(),
-      live: false,
-      fundsAck: false,
-      chainId: null,
-    });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toMatch(/allow list/);
+  it("blocks before any wallet prompt when the policy says no", () => {
+    expect(gateOrder({ ...base, notionalUsd: 500 }).ok).toBe(false);
+    expect(gateOrder({ ...base, symbol: "BONK/USDC" }).reason).toMatch(/allow/i);
+    expect(gateOrder({ ...base, slippageBps: 500 }).ok).toBe(false);
   });
-
-  it("blocks live sends until the real-funds toggle and the right chain", () => {
-    const base = {
-      config,
-      rung: "micro" as const,
-      symbol: "WETH/USDG",
-      side: "buy" as const,
-      notionalUsd: 10,
-      slippageBps: 30,
-      usage,
-      nowMs: Date.now(),
-      live: true,
-    };
-    expect(gateOrder({ ...base, fundsAck: false, chainId: 4663 }).reason).toMatch(/real funds/);
-    expect(gateOrder({ ...base, fundsAck: true, chainId: 1 }).reason).toMatch(/4663/);
-    expect(gateOrder({ ...base, fundsAck: true, chainId: 4663 }).ok).toBe(true);
+  it("needs live.enabled, the real-funds tick, and a wallet", () => {
+    expect(gateOrder({ ...base, config: off, rung: "standard" }).reason).toContain("live.enabled");
+    expect(gateOrder({ ...base, fundsAck: false }).reason).toContain("real funds");
+    const r = gateOrder({ ...base, walletConnected: false });
+    expect(r.ok).toBe(false);
+    expect(r.needsWallet).toBe(true);
   });
-
-  it("lets shadow pass without a wallet", () => {
-    const result = gateOrder({
-      config,
-      rung: "shadow",
-      symbol: "WETH/USDG",
-      side: "buy",
-      notionalUsd: 10,
-      slippageBps: 30,
-      usage,
-      nowMs: Date.now(),
-      live: false,
-      fundsAck: false,
-      chainId: null,
-    });
-    expect(result.ok).toBe(true);
+  it("never needs a wallet below the live rungs", () => {
+    expect(gateOrder({ ...base, live: false, walletConnected: false, fundsAck: false }).ok).toBe(true);
   });
 });

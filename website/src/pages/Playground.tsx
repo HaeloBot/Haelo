@@ -3,7 +3,7 @@ import { Meta } from "../components/Meta.js";
 import { sound } from "../audio/sound.js";
 import { impact } from "../components/Impact.js";
 import { DEMO_YAML, PRESETS } from "../sim/presets.js";
-import { ChainOrder, persistAudit, readPersistedAudit } from "../components/ChainOrder.js";
+import { SolanaOrder, persistAudit, readPersistedAudit } from "../components/SolanaOrder.js";
 import { SCENARIOS } from "../sim/scenarios.js";
 import { PlaygroundSession, type SessionSnapshot, type StepResult } from "../sim/session.js";
 import type { AuditEntry } from "../../../src/audit.js";
@@ -76,7 +76,7 @@ export default function Playground(): React.ReactElement {
     <div className="pg">
       <Meta
         title="Playground: Haelo"
-        description="Run Haelo's policy engine on live Robinhood Chain quotes. Shadow and paper are unsigned. A live rung asks your wallet to sign."
+        description="Run Haelo's policy engine on live Jupiter prices on Solana. Shadow and paper are unsigned. A live rung simulates the swap, then asks your Solana wallet to sign."
       />
       <section className="panel">
         <h2>Policy YAML</h2>
@@ -117,7 +117,7 @@ export default function Playground(): React.ReactElement {
       <section className="panel">
         <h2>Ladder</h2>
         <p className="banner">
-          Shadow fills are simulated against the on-chain quote. Paper fills are the same quote and are not signed. Micro and standard ask the connected wallet to sign after the policy gate.
+          Shadow fills are simulated against the Jupiter quote. Paper fills use the same live route and are not signed. Micro and standard simulate the swap, then ask your connected wallet to sign after the policy gate.
         </p>
         <div className="rungs" aria-label="Autonomy ladder">
           {LADDER.map((rung) => (
@@ -169,7 +169,7 @@ export default function Playground(): React.ReactElement {
           </>
         ) : null}
 
-        <ChainOrder
+        <SolanaOrder
           sessionRef={sessionRef}
           publish={publish}
           onAudit={() => {

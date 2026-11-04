@@ -49,7 +49,7 @@ export const HAELO_TOOLS: ToolDef[] = [
   {
     name: "haelo_propose_order",
     description:
-      "Propose an order for human approval. At the shadow and paper rungs this behaves like place_order for that rung; at higher rungs it always waits for a human to approve it. Only available with brokers that expose the native place_order tool.",
+      "Propose an order for human approval. At the shadow and paper rungs this behaves like place_order for that rung; at higher rungs it always waits for a human to approve it. ",
     inputSchema: {
       type: "object",
       properties: {
@@ -103,7 +103,7 @@ export const HAELO_TOOLS: ToolDef[] = [
   },
   {
     name: "haelo_kill_switch",
-    description: "Stop the agent now: drop to shadow and cancel open broker orders where the broker can cancel them. This does not promote, approve, or edit policy. A human must promote the agent again before live orders resume.",
+    description: "Stop the agent now: drop to shadow so nothing more is signed. This does not promote, approve, or edit policy. A human must promote the agent again before live orders resume.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
   },
@@ -622,11 +622,11 @@ export class HaeloCore {
         filled_qty: out.order.filledQty,
         filled_avg_price: out.order.filledAvgPrice,
         simulated: true,
-        haelo: { ...info, note: "Shadow rung: simulated against live quotes. Nothing was sent to the broker." },
+        haelo: { ...info, note: "Shadow rung: simulated against live quotes. Nothing touched the chain." },
       });
     }
 
-    // paper, micro, standard: real execution. Paper on Robinhood Chain quotes on-chain and does not sign.
+    // paper, micro, standard: real routes. Paper prices from Jupiter and simulates, but never signs.
     const mode: BrokerMode = rung === "paper" ? "paper" : "live";
     if (mode === "live" && !this.config.live.enabled) {
       this.audit.append("decision", this.decisionRecord(a, "block", { reason: "live trading is disabled (live.enabled: false)", rationale }));
@@ -789,16 +789,14 @@ export class HaeloCore {
     return out;
   }
 
-  /** Live Robinhood Chain sends need an explicit confirm flag on the call. Other brokers ignore it. */
+  /** Live swaps need an explicit confirm flag on the call, on top of live.enabled. */
   private chainConfirmBlock(args: Args): string | undefined {
-    if (this.config.broker.type !== "robinhood-chain") return undefined;
     if (args["confirm"] === true) return undefined;
-    return "Live Robinhood Chain swaps require confirm: true on the order, and live.enabled: true. Nothing was signed.";
+    return "Live Solana swaps require confirm: true on the order, and live.enabled: true. Nothing was signed.";
   }
 
-  /** Count consecutive live chain failures and drop to shadow when the policy threshold is hit. */
+  /** Count consecutive live swap failures and drop to shadow when the policy threshold is hit. */
   private async noteChainLive(ok: boolean): Promise<void> {
-    if (this.config.broker.type !== "robinhood-chain") return;
     const limit = this.config.broker.maxConsecutiveErrors;
     let streak = 0;
     await this.store.update((s) => {
@@ -990,10 +988,7 @@ export class HaeloCore {
         return text({
           rung: st.rung,
           next_rung: st.nextRung,
-          description:
-            this.adapter.id === "robinhood-chain" && st.rung === "paper"
-              ? "Orders are priced from on-chain Uniswap quotes and are not signed. Nothing is broadcast."
-              : RUNG_DESCRIPTIONS[st.rung],
+          description: RUNG_DESCRIPTIONS[st.rung],
           caps_today: st.capsToday,
           pending_proposals: st.pendingProposals,
           promotion_frozen_until: st.frozenUntil,
@@ -1022,7 +1017,7 @@ export class HaeloCore {
       }
       case "haelo_propose_order": {
         const tool = this.index.get("place_order");
-        if (!tool) return text({ error: "This broker does not expose the native place_order tool; use its own order tool, which Haelo also routes through the ladder." }, true);
+        if (!tool) return text({ error: "This venue does not expose place_order." }, true);
         const { rationale: _r, ...rest } = args;
         void _r;
         return this.doOrder(tool, { ...rest, rationale: args["rationale"] }, session, { forceProposal: true });
@@ -1076,9 +1071,9 @@ export class HaeloCore {
 }
 
 export const RUNG_DESCRIPTIONS: Record<Rung, string> = {
-  shadow: "Orders are simulated against live quotes. Nothing reaches the broker.",
-  paper: "Orders go to the broker's paper-trading environment. No real money.",
-  propose: "Orders are held until a human approves each one, then sent live.",
-  micro: "Orders go live automatically under tiny caps and an allowlist.",
-  standard: "Orders go live automatically under your normal caps.",
+  shadow: "Swaps are simulated against live Jupiter quotes on a virtual book. Nothing touches the chain.",
+  paper: "Swaps are routed and priced by Jupiter and the real transaction is simulated, but nothing is signed or sent.",
+  propose: "Every swap waits for a human to approve it. Only approved swaps are signed.",
+  micro: "Swaps are signed and sent on Solana mainnet under tiny caps.",
+  standard: "Swaps are signed and sent on Solana mainnet under the rails in your policy.",
 };

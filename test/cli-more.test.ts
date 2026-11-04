@@ -5,9 +5,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { run, type CliIo } from "../src/cli-main.js";
 import { createHaelo } from "../src/factory.js";
 import { loadConfig } from "../src/policy/load.js";
-import { startMockUpstream, type RunningMockUpstream } from "../src/testkit/mock-upstream.js";
+import { fund, newWallet, startFakeSolana, type RunningFakeSolana } from "./helpers/fake-solana.js";
 
-let up: RunningMockUpstream | undefined;
+let up: RunningFakeSolana | undefined;
 afterEach(async () => {
   await up?.close();
   up = undefined;
@@ -19,10 +19,14 @@ function io(cwd: string, env: NodeJS.ProcessEnv = {}): CliIo & { stdout: string;
 }
 
 async function project(extra = ""): Promise<{ dir: string; cfg: string }> {
-  up = await startMockUpstream();
+  up = await startFakeSolana();
+  const address = newWallet().publicKey.toBase58();
+  fund(up.state, address, 5, 1000);
   const dir = mkdtempSync(join(tmpdir(), "haelo-cli2-"));
   const cfg = join(dir, "haelo.yaml");
-  writeFileSync(cfg, `version: 1\nstateDir: ${join(dir, "state")}\nbroker:\n  type: mcp-upstream\n  url: ${up.url}\n  quoteTools: { equity: get_equity_quotes }\nagent: { accountId: MOCK-AGENT-1 }\nhousehold: { enabled: false }\nladder:\n  criteria:\n    shadow: { minDays: 0, minDecisions: 0 }\n${extra}`);
+  // Watch-only: HAELO_ADDRESS lets paper simulate, and no key is loaded.
+  process.env["HAELO_ADDRESS_CLI2"] = address;
+  writeFileSync(cfg, `version: 1\nstateDir: ${join(dir, "state")}\nsecrets: { store: file }\nbroker:\n  type: solana\n  rpcUrl: ${up.rpcUrl}\n  jupiterBaseUrl: ${up.jupiterUrl}\n  addressEnv: HAELO_ADDRESS_CLI2\nhousehold: { enabled: false }\nladder:\n  criteria:\n    shadow: { minDays: 0, minDecisions: 0 }\n${extra}`);
   return { dir, cfg };
 }
 
@@ -47,10 +51,10 @@ describe("haelo CLI: operating commands", () => {
     expect(JSON.parse(r.stdout).promotion.eligible).toBe(true);
     const pr = io(p.dir);
     expect(await run(["promote", "--config", p.cfg], pr)).toBe(0);
-    expect(pr.stdout).toMatch(/propose/);
+    expect(pr.stdout).toMatch(/shadow -> paper/);
     const d = io(p.dir);
     expect(await run(["demote", "--config", p.cfg], d)).toBe(0);
-    expect(d.stdout).toContain("Demoted propose -> shadow");
+    expect(d.stdout).toContain("Demoted paper -> shadow");
     const d2 = io(p.dir);
     await run(["demote", "--config", p.cfg], d2);
     expect(d2.stdout).toContain("lowest rung");
@@ -64,9 +68,9 @@ describe("haelo CLI: operating commands", () => {
     expect(await run(["proposals", "--config", p.cfg], e)).toBe(0);
     expect(e.stdout).toContain("No proposals");
     writeFileSync(p.cfg, readFileSync(p.cfg, "utf8") + "  start: propose\n");
-    const core = createHaelo(loadConfig(p.cfg), { env: {} });
+    const core = await createHaelo(loadConfig(p.cfg), { env: {} });
     await core.init();
-    await core.callTool("place_equity_order", { account_number: "MOCK-AGENT-1", symbol: "AAPL", side: "buy", type: "market", notional: 30 });
+    await core.callTool("place_order", { symbol: "SOL", side: "buy", notional_usd: 30, confirm: true });
     const id = core.listProposals()[0]?.id as string;
     await core.close();
     const j = io(p.dir);
@@ -82,26 +86,14 @@ describe("haelo CLI: operating commands", () => {
     expect(await run(["audit", "bogus", "--config", p.cfg], io(p.dir))).toBe(1);
   });
 
-  it("pin status / approve, policy show and check without a lock", async () => {
+  it("pin status on the fixed Solana tool set, policy show and check without a lock", async () => {
     const p = await project();
     const ps = io(p.dir);
     expect(await run(["pin", "status", "--config", p.cfg], ps)).toBe(0);
-    const pa = io(p.dir);
-    expect(await run(["pin", "approve", "--config", p.cfg], pa)).toBe(0);
-    expect(pa.stdout).toMatch(/Pinned \d+ upstream tools/);
-    const ps2 = io(p.dir);
-    await run(["pin", "status", "--config", p.cfg], ps2);
-    expect(ps2.stdout).toContain("no drift");
-    up!.state.descriptionSuffix = " changed";
-    const core = createHaelo(loadConfig(p.cfg), { env: {} });
-    await core.init();
-    await core.close();
-    const ps3 = io(p.dir);
-    expect(await run(["pin", "status", "--config", p.cfg], ps3)).toBe(1);
-    expect(ps3.stdout).toContain("DRIFT");
+    expect(ps.stdout).toMatch(/not pinned|no drift/);
     const st = io(p.dir);
     await run(["status", "--config", p.cfg], st);
-    expect(st.stdout).toContain("TOOL DRIFT");
+    expect(st.stdout).toContain("static adapter");
     const show = io(p.dir);
     expect(await run(["policy", "show", "--config", p.cfg], show)).toBe(0);
     expect(JSON.parse(show.stdout).live.enabled).toBe(false);
@@ -113,12 +105,11 @@ describe("haelo CLI: operating commands", () => {
     const m = io(dir);
     expect(await run(["status"], m)).toBe(1);
     expect(m.stderr).toContain("Config not found");
-    expect(await run(["init", "--broker", "nope"], io(dir))).toBe(1);
+    expect(await run(["init", "--broker", "alpaca"], io(dir))).toBe(1); // no other venues
     const a = io(dir);
-    expect(await run(["init", "--broker", "alpaca", "--state-dir", join(dir, "s")], a)).toBe(0);
-    const au = io(dir);
-    expect(await run(["auth"], au)).toBe(1);
-    expect(au.stderr).toContain("mcp-upstream");
+    expect(await run(["init", "--state-dir", join(dir, "s")], a)).toBe(0);
+    expect(await run(["key", "bogus"], io(dir))).toBe(1);
+    expect(await run(["quote"], io(dir))).toBe(1);
     expect(await run(["serve"], io(dir))).toBe(1);
     expect(await run(["version"], io(dir))).toBe(0);
   });
@@ -158,8 +149,16 @@ describe("haelo CLI: operating commands", () => {
     expect(code).toBe(0);
   });
 
-  it("mock-upstream serves over HTTP until SIGINT", async () => {
-    const o = io(tmpdir());
-    expect(await runUntil(["mock-upstream", "--port", "0"], o, /listening at/)).toBe(0);
+  it("paper orders through the CLI-built core simulate the real transaction without a key", async () => {
+    const p = await project("  start: shadow\n");
+    const core = await createHaelo(loadConfig(p.cfg), { env: process.env });
+    await core.init();
+    await core.promote({ force: true });
+    expect(core.status().rung).toBe("paper");
+    const r = await core.callTool("place_order", { symbol: "SOL", side: "buy", notional_usd: 25 });
+    await core.close();
+    expect(r.isError).toBeFalsy();
+    expect((r.structuredContent?.["onchainSimulation"] as { ok: boolean }).ok).toBe(true);
+    expect([...up!.state.swaps.values()].some((s) => s.executed)).toBe(false);
   });
 });

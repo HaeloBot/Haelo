@@ -10,7 +10,7 @@ Source: <https://zauth.inc/docs/reposcan>.
 | Signal | What is true here |
 |---|---|
 | Code originality | Written for this project. No copied boilerplate or vendored code. Dependencies are consumed from npm, not copied in. |
-| Development effort | Substantial, tested implementation (see test counts in the README / CI), real adapters, docs, CI, Docker. |
+| Development effort | Substantial, tested implementation (see test counts in the README / CI), a Solana venue with a pre-sign simulation guard, docs, CI, Docker. |
 | Commit history | The repository ships with a short, honest git history: the commits describe the real work as it was organised, are dated when they were made, and have one author. Nothing is backdated and there are no invented contributors. Keep committing normally after you push. |
 | Contributor diversity / age | Time and other people. `CONTRIBUTING.md` makes it easy to join. |
 

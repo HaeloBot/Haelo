@@ -5,7 +5,7 @@ import { parseConfig } from "../src/policy/load.js";
 import { ShadowLedger, newShadowState } from "../src/shadow.js";
 import type { HouseholdAccount, OrderIntent, Quote } from "../src/types.js";
 
-const cfg = (extra: Record<string, unknown> = {}) => parseConfig(JSON.stringify({ version: 1, broker: { type: "alpaca" }, ...extra }));
+const cfg = (extra: Record<string, unknown> = {}) => parseConfig(JSON.stringify({ version: 1, broker: { type: "solana" }, ...extra }));
 const q = (symbol: string, bid: number, ask: number): Quote => ({ symbol, bid, ask, mid: (bid + ask) / 2, ts: "2026-11-04T00:00:00Z" });
 const intent = (o: Partial<OrderIntent> = {}): OrderIntent => ({ symbol: "AAPL", side: "buy", type: "market", assetClass: "equity", ...o });
 

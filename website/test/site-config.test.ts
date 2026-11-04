@@ -10,14 +10,14 @@ describe("site config", () => {
     expect(cfg.token.symbol).toBe("HAELO");
     expect(isCaSet(cfg.token.ca)).toBe(false);
     expect(cfg.social.x).toBe("https://x.com/HaeloBot");
-    expect(cfg.reown.projectId).toBe("d55fd8ddbd81e9b400102b491e41a339");
+    expect(cfg.solana.rpcUrl).toBe("https://api.mainnet-beta.solana.com");
   });
 
   it("fills defaults for a partial document", () => {
     const cfg = parseSiteConfig({ token: {}, social: {} });
     expect(cfg.token.buyUrlTemplate).toContain("{CA}");
     expect(cfg.social.x).toBe("https://x.com/HaeloBot");
-    expect(cfg.reown.projectId).toBe("d55fd8ddbd81e9b400102b491e41a339");
+    expect(cfg.solana.rpcUrl).toBe("https://api.mainnet-beta.solana.com");
   });
 
   it("falls back when the document is not the config", () => {

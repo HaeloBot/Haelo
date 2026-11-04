@@ -10,6 +10,6 @@ coverage/
 # Local Haelo state (audit log, tokens, policy lock). Never commit these.
 .haelo/
 http-token
-oauth/
+*.keypair.json
 haelo.db*
 secrets/

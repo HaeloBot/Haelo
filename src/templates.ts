@@ -1,7 +1,5 @@
-export type TemplateBroker = "alpaca" | "robinhood-crypto" | "robinhood-chain" | "mcp-upstream" | "mock";
-
 const COMMON = `
-# LIVE TRADING IS OFF until you opt in here. While false, nothing is ever sent to a live account:
+# LIVE TRADING IS OFF until you opt in here. While false, nothing is ever signed:
 # micro/standard cannot be configured or promoted into, and approved proposals are not executed.
 # Before turning it on, read docs/GO_LIVE.md and run \`haelo doctor --live\`.
 live:
@@ -11,7 +9,7 @@ storage:
   backend: sqlite           # sqlite (<stateDir>/haelo.db) or jsonl (state.json + audit.jsonl)
 
 secrets:
-  store: auto               # auto = OS keychain if available, else 0600 files; or keychain / file
+  store: auto               # where \`haelo key import\` keeps the key: OS keychain if available, else a 0600 file
 
 # Hard rails. These apply at the standard rung; lower rungs can only tighten them.
 rails:
@@ -20,13 +18,13 @@ rails:
   maxOrdersPerDay: 20
   maxOrdersPerMinute: 5
   symbolCooldownSeconds: 0
-  allowSymbols: []          # empty = any symbol not blocked
+  allowSymbols: []          # empty = any pair not blocked, e.g. [SOL/USDC, JUP/USDC]
   blockSymbols: []
-  allowOrderTypes: [market, limit]
-  allowAssetClasses: [equity, crypto]
+  allowOrderTypes: [market] # Jupiter swaps are market exact-input swaps
+  allowAssetClasses: [crypto]
   allowShort: false
   maxPositionPct: 100       # max share of total equity in one symbol after an order
-  maxSlippageBps: 100       # Robinhood Chain swaps: 1% cap. A larger slippage_bps is refused
+  maxSlippageBps: 100       # 1% cap. A larger slippage_bps is refused
 
 # Tighter caps for rungs below standard.
 rungs:
@@ -34,7 +32,7 @@ rungs:
     maxOrderUsd: 25
     maxDailyUsd: 100
     maxOrdersPerDay: 5
-    allowSymbols: []        # e.g. [AAPL, MSFT] to restrict the micro rung to a short list
+    allowSymbols: [SOL/USDC] # keep the first live rung on the deepest pair
 
 ladder:
   start: shadow
@@ -73,12 +71,12 @@ injection:
   action: block_and_demote
 
 tools:
-  trustOnFirstUse: true     # pin the upstream tool list on first start
+  trustOnFirstUse: true     # pin the tool list on first start
   recheckSeconds: 0         # 0 = verify the tool list before every order
 
 household:
   enabled: true
-  washSale: { enabled: true, windowDays: 30, block: false, includeCrypto: false }
+  washSale: { enabled: false, windowDays: 30, block: false, includeCrypto: false }
   concentration: { maxPct: 30, block: true }
   lots: { warnDaysToLongTerm: 45 }
   requireData: false
@@ -88,51 +86,28 @@ http:
   port: 8787
 `;
 
-const BROKERS: Record<TemplateBroker, string> = {
-  alpaca: `broker:
-  type: alpaca
-  # Credentials come from the environment (see .env.example). A free paper account is enough to start.
-  feed: iex
-`,
-  "robinhood-chain": `broker:
-  type: robinhood-chain
-  # Uniswap v3 on Robinhood Chain mainnet (chain 4663). See docs/CHAIN.md.
-  # Quotes need no key. A live swap also needs live.enabled, confirm: true, and HAELO_PRIVATE_KEY.
-  network: mainnet
-`,
-  "robinhood-crypto": `broker:
-  type: robinhood-crypto
-  # US customers only. Create an API credential in your Robinhood crypto account settings (web classic).
-  apiVersion: v1
-`,
-  "mcp-upstream": `broker:
-  type: mcp-upstream
-  # Robinhood's official agentic-trading MCP. Run \`haelo auth\` once to sign in with OAuth.
-  url: https://agent.robinhood.com/mcp/trading
-  # Once you have seen the upstream tools/list, name the tools explicitly (argument shapes are undocumented):
-  # quoteTools: { equity: get_equity_quotes, crypto: get_crypto_quotes }
-  # accountTool: get_portfolio
-  # positionsTool: get_equity_positions
-  # ordersTool: get_equity_orders
-  # taxLotsTool: get_equity_tax_lots
-  # toolOverrides: { some_tool_name: read }
-`,
-  mock: `broker:
-  type: mcp-upstream
-  # Local test double started with \`haelo mock-upstream --port 8799\`. No broker account needed.
-  url: http://127.0.0.1:8799/
-`,
-};
+const BROKER = `broker:
+  type: solana
+  # Solana mainnet-beta. The public RPC is rate limited; for live use put a private RPC URL in HAELO_RPC_URL.
+  rpcUrl: https://api.mainnet-beta.solana.com
+  # Jupiter Swap API V2. HAELO_JUPITER_API_KEY is optional (keyless tier otherwise).
+  jupiterBaseUrl: https://api.jup.ag/swap/v2
+  reserveSol: 0.02          # SOL kept for fees when selling SOL
+  maxFeeSol: 0.01           # most SOL a swap may cost beyond the SOL it sells (checked by simulation)
+  paperSimulate: true       # paper orders also simulate the real transaction when a wallet is known
+  maxConsecutiveErrors: 3   # failed live sends in a row before an automatic drop to shadow
+  tokens: {}                # extra SPL tokens, e.g. { WIF: EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm }
+`;
 
-export function configTemplate(broker: TemplateBroker, opts: { stateDir?: string } = {}): string {
+export function configTemplate(opts: { stateDir?: string } = {}): string {
   return `# Haelo policy. Read docs/POLICY.md for every field.
 # Lock it once you are happy: \`haelo policy lock\`. The gateway then refuses to start if this file changes.
 version: 1
 stateDir: ${opts.stateDir ?? "~/.haelo"}
 
-${BROKERS[broker]}
-# The only account the agent may trade in; orders naming another account are blocked.
-# Set it like:  agent: { accountId: "123456789" }
+${BROKER}
+# The only wallet the agent may trade from; orders naming another account are blocked.
+# Set it like:  agent: { accountId: "<your wallet address>" }
 agent: {}
 ${COMMON}`;
 }

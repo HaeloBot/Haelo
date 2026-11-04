@@ -241,22 +241,22 @@ html, body { cursor: auto; }
 @media (hover: hover) and (pointer: fine) {
   body.fine .cursor, body.fine .cursor-dot, body.fine .trail { display: block; }
 }
-html.appkit-open,
-html.appkit-open body,
-html.appkit-open body.fine,
-html.appkit-open body.fine a,
-html.appkit-open body.fine button,
-html.appkit-open body.fine textarea,
-html.appkit-open body.fine input,
-html.appkit-open body.fine select {
+html.wallet-open,
+html.wallet-open body,
+html.wallet-open body.fine,
+html.wallet-open body.fine a,
+html.wallet-open body.fine button,
+html.wallet-open body.fine textarea,
+html.wallet-open body.fine input,
+html.wallet-open body.fine select {
   cursor: auto;
 }
-html.appkit-open .cursor,
-html.appkit-open .cursor-dot,
-html.appkit-open .trail,
-html.appkit-open body.fine .cursor,
-html.appkit-open body.fine .cursor-dot,
-html.appkit-open body.fine .trail {
+html.wallet-open .cursor,
+html.wallet-open .cursor-dot,
+html.wallet-open .trail,
+html.wallet-open body.fine .cursor,
+html.wallet-open body.fine .cursor-dot,
+html.wallet-open body.fine .trail {
   display: none;
 }
 @media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
@@ -693,4 +693,34 @@ html.shake-up, html.shake-down { animation: shake 0.48s linear; }
   .glitch::before, .glitch::after, .halo-ring, .eq i, html.shake-up, html.shake-down, .sound.waiting, .fx-in, .wallet-halo { animation: none; }
   .card, .btn, .rung { transition: none; }
   .card:hover, .btn:hover, .rung.on { transform: none; }
+}
+
+/* Solana wallet modal, in the site's colours and above the effects layers. */
+.wallet-adapter-modal {
+  z-index: 2147483000;
+  font-family: "Manrope", system-ui, sans-serif;
+}
+.wallet-adapter-modal-wrapper {
+  background: #050605;
+  border: 1px solid rgba(204, 255, 0, 0.35);
+  box-shadow: 0 0 60px rgba(204, 255, 0, 0.18);
+  border-radius: 18px;
+}
+.wallet-adapter-modal-title {
+  font-family: "Syne", system-ui, sans-serif;
+  font-weight: 800;
+  color: #f4f7f4;
+}
+.wallet-adapter-button {
+  font-family: "Manrope", system-ui, sans-serif;
+  border-radius: 12px;
+}
+.wallet-adapter-modal-list .wallet-adapter-button:not([disabled]):hover {
+  background: rgba(204, 255, 0, 0.12);
+}
+.wallet-adapter-modal-button-close {
+  background: rgba(204, 255, 0, 0.12);
+}
+.wallet-adapter-modal-button-close svg {
+  fill: #ccff00;
 }

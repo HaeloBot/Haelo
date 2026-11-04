@@ -24,7 +24,7 @@ Node 22.13+ or 24 (`node:sqlite`). `npm test` builds `dist/` first (the stdio te
 
 ## Adding a broker adapter
 
-See [docs/ADAPTERS.md](docs/ADAPTERS.md). Implement `RestBroker` (REST brokers) or `BrokerAdapter` (anything else), add recorded or documented fixtures, and add tests next to `test/alpaca.test.ts`.
+See [docs/SOLANA.md](docs/SOLANA.md). Venue code lives in `src/adapters/solana.ts` and `src/solana/`. Every change to signing or the pre-sign guard needs a test in `test/solana.test.ts` against the fake cluster in `test/helpers/fake-solana.ts`.
 
 ## Pull requests
 

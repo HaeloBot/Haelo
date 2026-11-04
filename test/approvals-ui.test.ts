@@ -1,10 +1,10 @@
 import { request } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import { startApprovalsUi, type RunningApprovalsUi } from "../src/server/approvals-ui.js";
-import { upstreamHarness, type UpstreamHarness } from "./helpers/upstream-harness.js";
+import { solanaHarness, type Harness } from "./helpers/harness.js";
 
 const TOKEN = "ui-token-0123456789abcdef";
-let h: UpstreamHarness | undefined;
+let h: Harness | undefined;
 let ui: RunningApprovalsUi | undefined;
 afterEach(async () => {
   await ui?.close();
@@ -31,8 +31,8 @@ function call(method: string, path: string, opts: { headers?: Record<string, str
 }
 
 async function withProposal(): Promise<string> {
-  h = await upstreamHarness({ ladder: { start: "propose" } });
-  await h.core.callTool("place_equity_order", { account_number: "MOCK-AGENT-1", symbol: "AAPL", side: "buy", type: "market", notional: 60, rationale: "<script>alert(1)</script> buy the dip" });
+  h = await solanaHarness({ ladder: { start: "propose" } });
+  await h.core.callTool("place_order", { symbol: "SOL", side: "buy", notional_usd: 60, confirm: true, rationale: "<script>alert(1)</script> buy the dip" });
   ui = await startApprovalsUi(h.core, { host: "127.0.0.1", port: 0, token: TOKEN });
   return h.core.listProposals()[0]?.id as string;
 }
@@ -68,7 +68,7 @@ describe("web approvals UI", () => {
     const id = await withProposal();
     const { page } = await login();
     expect(page).toContain(id);
-    expect(page).toContain("BUY AAPL");
+    expect(page).toContain("BUY SOL/USDC");
     expect(page).not.toContain("<script>alert(1)</script>");
     expect(page).toContain("&lt;script&gt;");
     const r = await call("GET", "/", { headers: { authorization: `Bearer ${TOKEN}` } });
@@ -84,7 +84,7 @@ describe("web approvals UI", () => {
     const typo = await call("POST", `/proposals/${id}/approve`, { headers: formHeaders(cookie), body: form({ csrf, confirm: "nope" }) });
     expect(typo.status).toBe(303);
     expect(decodeURIComponent(String(typo.headers.location))).toContain("did not match");
-    expect(h?.state.orders).toHaveLength(0);
+    expect(h?.executed()).toBe(0);
   });
 
   it("approves with CSRF + typed id and sends exactly that order", async () => {
@@ -94,7 +94,7 @@ describe("web approvals UI", () => {
     const r = await call("POST", `/proposals/${id}/approve`, { headers: formHeaders(cookie, origin), body: form({ csrf, confirm: id }) });
     expect(r.status).toBe(303);
     expect(decodeURIComponent(String(r.headers.location))).toContain(`Executed ${id}`);
-    expect(h?.state.orders).toHaveLength(1);
+    expect(h?.executed()).toBe(1);
     expect(h?.core.getProposal(id)?.decidedBy).toBe("human:web");
     const again = await call("POST", `/proposals/${id}/approve`, { headers: formHeaders(cookie), body: form({ csrf, confirm: id }) });
     expect(decodeURIComponent(String(again.headers.location))).toMatch(/not pending/);
@@ -113,8 +113,8 @@ describe("web approvals UI", () => {
 
   it("refuses non-loopback binds, short tokens, oversized bodies and unknown routes", async () => {
     const id = await withProposal();
-    await expect(startApprovalsUi(h?.core as UpstreamHarness["core"], { host: "0.0.0.0", port: 0, token: TOKEN })).rejects.toThrow(/loopback/);
-    await expect(startApprovalsUi(h?.core as UpstreamHarness["core"], { host: "127.0.0.1", port: 0, token: "short" })).rejects.toThrow(/16/);
+    await expect(startApprovalsUi(h?.core as Harness["core"], { host: "0.0.0.0", port: 0, token: TOKEN })).rejects.toThrow(/loopback/);
+    await expect(startApprovalsUi(h?.core as Harness["core"], { host: "127.0.0.1", port: 0, token: "short" })).rejects.toThrow(/16/);
     expect((await call("GET", "/nope", { headers: { authorization: `Bearer ${TOKEN}` } })).status).toBe(404);
     const big = await call("POST", `/proposals/${id}/decline`, { headers: { authorization: `Bearer ${TOKEN}`, "content-type": "application/x-www-form-urlencoded" }, body: "x=" + "a".repeat(20_000) }).catch(() => ({ status: 500 }) as Res);
     expect(big.status).toBe(500);

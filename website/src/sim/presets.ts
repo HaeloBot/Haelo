@@ -5,7 +5,7 @@ export const DEMO_YAML = `# Playground policy. Short criteria so a session can c
 version: 1
 stateDir: ~/.haelo
 broker:
-  type: alpaca
+  type: solana
 live:
   enabled: false
 rails:
@@ -13,9 +13,9 @@ rails:
   maxDailyUsd: 2000
   maxOrdersPerDay: 20
   maxOrdersPerMinute: 6
-  allowSymbols: [BTC-USD, ETH-USD, SOL-USD, WETH/USDG]
+  allowSymbols: [SOL/USDC, JUP/USDC, BONK/USDC]
   blockSymbols: []
-  allowOrderTypes: [market, limit]
+  allowOrderTypes: [market]
   allowAssetClasses: [crypto]
   allowShort: false
   maxPositionPct: 100
@@ -63,7 +63,7 @@ export const STRICT_YAML = `# Close to haelo.example.yaml. Promotion takes real 
 version: 1
 stateDir: ~/.haelo
 broker:
-  type: alpaca
+  type: solana
 live:
   enabled: false
 rails:
@@ -72,7 +72,7 @@ rails:
   maxOrdersPerDay: 20
   allowSymbols: []
   allowAssetClasses: [equity, crypto]
-  allowOrderTypes: [market, limit]
+  allowOrderTypes: [market]
   allowShort: false
 rungs:
   micro:
@@ -116,7 +116,7 @@ export const HOUSEHOLD_YAML = `# Equity allowed, so the wash-sale preflight has 
 version: 1
 stateDir: ~/.haelo
 broker:
-  type: alpaca
+  type: solana
 live:
   enabled: false
 agent: {}
@@ -124,9 +124,9 @@ rails:
   maxOrderUsd: 2000
   maxDailyUsd: 5000
   maxOrdersPerDay: 20
-  allowSymbols: [AAPL, BTC-USD]
-  allowAssetClasses: [equity, crypto]
-  allowOrderTypes: [market, limit]
+  allowSymbols: [SOL/USDC, JUP/USDC]
+  allowAssetClasses: [crypto]
+  allowOrderTypes: [market]
   allowShort: false
 ladder:
   start: shadow
@@ -156,11 +156,11 @@ export interface PolicyPreset {
   yaml: string;
 }
 
-export const LIVE_CHAIN_YAML = `# Live Robinhood Chain. The wallet signs. This page never sees a private key.
+export const LIVE_CHAIN_YAML = `# Live Solana. Your wallet signs. This page never sees a private key.
 version: 1
 stateDir: ~/.haelo
 broker:
-  type: robinhood-chain
+  type: solana
 live:
   enabled: true
 rails:
@@ -168,7 +168,7 @@ rails:
   maxDailyUsd: 200
   maxOrdersPerDay: 10
   maxSlippageBps: 100
-  allowSymbols: [WETH/USDG]
+  allowSymbols: [SOL/USDC, JUP/USDC]
   allowOrderTypes: [market]
   allowAssetClasses: [crypto]
   allowShort: false
@@ -180,7 +180,7 @@ household:
 
 export const PRESETS: PolicyPreset[] = [
   { id: "short", label: "Short ladder", blurb: "Climbs in a few good orders. Live stays locked until you opt in.", yaml: DEMO_YAML },
-  { id: "live", label: "Live chain", blurb: "Starts on micro with live.enabled. A swap asks your wallet to sign.", yaml: LIVE_CHAIN_YAML },
+  { id: "live", label: "Live Solana", blurb: "Starts on micro with live.enabled. A swap asks your Solana wallet to sign.", yaml: LIVE_CHAIN_YAML },
   { id: "strict", label: "Strict", blurb: "The shape of haelo.example.yaml. Days, not clicks.", yaml: STRICT_YAML },
-  { id: "household", label: "Household", blurb: "Equity allow-list plus wash-sale and concentration checks.", yaml: HOUSEHOLD_YAML },
+  { id: "household", label: "Household", blurb: "Concentration checks across the agent wallet and a cold wallet.", yaml: HOUSEHOLD_YAML },
 ];

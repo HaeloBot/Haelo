@@ -7,7 +7,7 @@
   "social": {
     "x": "https://x.com/HaeloBot"
   },
-  "reown": {
-    "projectId": "d55fd8ddbd81e9b400102b491e41a339"
+  "solana": {
+    "rpcUrl": "https://api.mainnet-beta.solana.com"
   }
 }

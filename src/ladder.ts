@@ -82,7 +82,7 @@ export function evaluatePromotion(config: HaeloConfig, state: PersistedState, su
   add("hard_breaches", st.breaches <= criteria.maxBreaches, `${st.breaches} breach(es) (max ${criteria.maxBreaches})`);
   add("injection_follow_through", st.injectionFollows <= criteria.maxInjectionFollows, `${st.injectionFollows} order(s) after a flagged result (max ${criteria.maxInjectionFollows})`);
   add("drawdown", st.drawdownPct <= criteria.maxDrawdownPct, `${st.drawdownPct.toFixed(2)}% max drawdown (max ${criteria.maxDrawdownPct}%)`);
-  add("tool_schema_stable", !extra.toolDrift && !state.drift, state.drift ? "upstream tools changed since they were pinned" : "no unreviewed upstream tool changes");
+  add("tool_schema_stable", !extra.toolDrift && !state.drift, state.drift ? "tools changed since they were pinned" : "no unreviewed tool changes");
   const frozen = state.ladder.frozenUntil ? Date.parse(state.ladder.frozenUntil) > now.getTime() : false;
   add("not_frozen", !frozen, frozen ? `promotion frozen until ${state.ladder.frozenUntil} (${state.ladder.frozenReason ?? "demotion cooldown"})` : "no cooldown active");
   return { from, to, eligible: checks.every((c) => c.ok), checks };

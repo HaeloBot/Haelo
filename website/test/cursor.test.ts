@@ -7,12 +7,11 @@ describe("custom cursor", () => {
     expect(css).not.toMatch(/cursor:\s*none/);
     expect(css).toContain("z-index: 2147483647");
     expect(css).toContain("pointer-events: none");
-    expect(css).toContain("html.appkit-open");
+    expect(css).toContain("html.wallet-open");
     expect(css).toContain("cursor: auto");
 
     const wallet = readFileSync("src/components/WalletButton.tsx", "utf8");
-    expect(wallet).toContain("useAppKitState");
-    expect(wallet).toContain("subscribeState");
-    expect(wallet).toContain('classList.toggle("appkit-open"');
+    expect(wallet).toContain("useWalletModal");
+    expect(wallet).toContain('classList.toggle("wallet-open"');
   });
 });

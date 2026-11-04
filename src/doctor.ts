@@ -1,16 +1,14 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { bestQuote, viemReader } from "./chain/executor.js";
-import { ROBINHOOD_MAINNET } from "./chain/uniswap.js";
-import { loadLocalSigner } from "./chain/signer.js";
-import { AlpacaBroker } from "./adapters/alpaca.js";
-import { McpUpstreamAdapter } from "./adapters/mcp-upstream.js";
-import { RobinhoodCryptoBroker } from "./adapters/robinhood-crypto.js";
 import type { FetchFn } from "./adapters/types.js";
+import { rpcUrl } from "./factory.js";
 import { initialState } from "./ladder.js";
-import { SecretOAuthProvider } from "./oauth.js";
 import type { LoadedConfig } from "./policy/load.js";
-import { openSecretStore } from "./secrets.js";
+import { openSecretStore, type SecretStore } from "./secrets.js";
+import { DEFAULT_TOKENS, SOLANA_MAINNET, USDC_MINT, WSOL_MINT, fromUnits } from "./solana/constants.js";
+import { JupiterClient } from "./solana/jupiter.js";
+import { SolanaRpc } from "./solana/rpc.js";
+import { loadSigner, walletAddress } from "./solana/signer.js";
 import { openStorage } from "./storage/index.js";
 import { errorMessage } from "./util.js";
 
@@ -27,13 +25,13 @@ export interface DoctorOptions {
   /** Also check what going live needs (live credentials, live.enabled, policy lock). */
   live?: boolean;
   fetch?: FetchFn;
-  /** Test hook: base URLs for the Alpaca/Robinhood clients. */
-  urls?: { alpacaPaper?: string; alpacaLive?: string; alpacaData?: string; robinhood?: string };
+  /** Expected genesis hash (tests run against a local fake cluster). */
+  genesisHash?: string;
 }
 
 /**
- * Read-only preflight. Every network call is a GET (or MCP initialize + tools/list). Doctor never places,
- * cancels or modifies anything, and never prints a secret.
+ * Read-only preflight. Doctor reads the RPC and asks Jupiter for a quote. It never signs, sends or
+ * simulates a swap, and never prints a secret.
  */
 export async function runDoctor(l: LoadedConfig, opts: DoctorOptions): Promise<DoctorCheck[]> {
   const out: DoctorCheck[] = [];
@@ -73,141 +71,78 @@ export async function runDoctor(l: LoadedConfig, opts: DoctorOptions): Promise<D
   if (env["HAELO_HTTP_TOKEN"]) add("local", "http token", env["HAELO_HTTP_TOKEN"].length >= 16 ? "pass" : "fail", "from HAELO_HTTP_TOKEN");
   else if (existsSync(tokFile)) add("local", "http token", (statSync(tokFile).mode & 0o077) === 0 ? "pass" : "warn", `${tokFile} (mode ${(statSync(tokFile).mode & 0o777).toString(8)})`);
   else add("local", "http token", "warn", "none yet (created on first `serve --http`)");
+  let store: SecretStore | undefined;
   try {
-    const ss = openSecretStore(cfg.secrets.store, l.stateDir);
-    add("local", "secret store", ss.kind === "keychain" ? "pass" : "warn", ss.kind === "keychain" ? "OS keychain available" : "using 0600 files (no OS keychain); see SECURITY.md");
+    store = openSecretStore(cfg.secrets.store, l.stateDir);
+    add("local", "secret store", store.kind === "keychain" ? "pass" : "warn", store.kind === "keychain" ? "OS keychain available" : "using 0600 files (no OS keychain); see SECURITY.md");
   } catch (e) {
     add("local", "secret store", "fail", errorMessage(e));
   }
 
-  // ---- broker
+  // ---- solana
   const b = cfg.broker;
-  const f = opts.fetch ? { fetch: opts.fetch } : {};
-  if (b.type === "alpaca") {
-    for (const mode of ["paper", "live"] as const) {
-      const id = env[mode === "paper" ? b.paperKeyIdEnv : b.liveKeyIdEnv];
-      const secret = env[mode === "paper" ? b.paperSecretEnv : b.liveSecretEnv];
-      const area = `alpaca ${mode}`;
-      if (!id || !secret) {
-        add(area, "credentials", mode === "live" && opts.live ? "fail" : mode === "paper" ? "warn" : "skip", `${mode === "paper" ? b.paperKeyIdEnv : b.liveKeyIdEnv} / ${mode === "paper" ? b.paperSecretEnv : b.liveSecretEnv} not set`);
-        continue;
-      }
-      if (mode === "paper" && !id.startsWith("PK")) add(area, "key type", "warn", "paper key ids usually start with PK; is this a live key?");
-      if (mode === "live" && id.startsWith("PK")) add(area, "key type", "fail", "live key id starts with PK, which is a paper key");
-      const broker = new AlpacaBroker({
-        [mode]: { keyId: id, secret },
-        paperBaseUrl: opts.urls?.alpacaPaper ?? b.paperBaseUrl,
-        liveBaseUrl: opts.urls?.alpacaLive ?? b.liveBaseUrl,
-        dataBaseUrl: opts.urls?.alpacaData ?? b.dataBaseUrl,
-        feed: b.feed,
-        ...f,
-      });
+  const rpc = new SolanaRpc(rpcUrl(cfg, env), opts.fetch);
+  const rpcLabel = env[b.rpcUrlEnv] ? `${b.rpcUrlEnv} (hidden)` : b.rpcUrl;
+  let rpcOk = false;
+  try {
+    const genesis = await rpc.getGenesisHash();
+    const want = opts.genesisHash ?? SOLANA_MAINNET.genesisHash;
+    rpcOk = genesis === want;
+    add("solana", "rpc", rpcOk ? "pass" : "fail", rpcOk ? `${rpcLabel} is mainnet-beta` : `${rpcLabel} is not mainnet-beta (genesis ${genesis})`);
+    if (rpcOk && !env[b.rpcUrlEnv]) add("solana", "rpc tier", "warn", "public RPC is rate limited; set a private RPC URL in " + b.rpcUrlEnv + " before going live");
+  } catch (e) {
+    add("solana", "rpc", "fail", `${rpcLabel}: ${errorMessage(e)}`);
+  }
+  if (rpcOk) {
+    for (const t of [...DEFAULT_TOKENS.map((x) => [x.symbol, x.mint] as const), ...Object.entries(b.tokens)]) {
       try {
-        const a = await broker.accountStatus(mode);
-        const ok = a.status === "ACTIVE" && !a.tradingBlocked && !a.accountBlocked;
-        add(area, "account", ok ? "pass" : "fail", `status ${a.status}${a.tradingBlocked ? ", TRADING BLOCKED" : ""}${a.accountBlocked ? ", ACCOUNT BLOCKED" : ""}${a.patternDayTrader ? ", pattern day trader" : ""}`);
-        if (mode === "live" && cfg.agent.accountId && a.accountNumber && a.accountNumber !== cfg.agent.accountId) add(area, "account wall", "fail", `agent.accountId ${cfg.agent.accountId} does not match these keys' account`);
+        const m = await rpc.getMint(t[1]);
+        add("solana", `mint ${t[0]}`, "pass", `${m.decimals} decimals`);
       } catch (e) {
-        add(area, "account", "fail", errorMessage(e));
-        continue;
-      }
-      try {
-        const q = await broker.getQuote("AAPL");
-        add(area, "market data", "pass", `AAPL bid ${q.bid} / ask ${q.ask} (${b.feed})`);
-      } catch (e) {
-        add(area, "market data", "fail", errorMessage(e));
+        add("solana", `mint ${t[0]}`, "fail", errorMessage(e));
       }
     }
-  } else if (b.type === "robinhood-chain") {
+  }
+  const apiKey = env[b.jupiterApiKeyEnv]?.trim();
+  try {
+    const jup = new JupiterClient({ baseUrl: b.jupiterBaseUrl, ...(apiKey ? { apiKey } : {}), ...(opts.fetch ? { fetch: opts.fetch } : {}) });
+    const q = await jup.order({ inputMint: WSOL_MINT, outputMint: USDC_MINT, amount: 10_000_000n });
+    add("jupiter", "quote", "pass", `0.01 SOL -> ${fromUnits(q.outAmount, 6)} USDC${q.router ? ` via ${q.router}` : ""}${apiKey ? "" : " (keyless tier)"}`);
+  } catch (e) {
+    add("jupiter", "quote", "fail", errorMessage(e));
+  }
+
+  let address: string | undefined;
+  try {
+    const signer = await loadSigner(env, { privateKeyEnv: b.privateKeyEnv, keypairFileEnv: b.keypairFileEnv }, store);
+    address = walletAddress(signer, env, b.addressEnv);
+    if (signer) add("wallet", "signing key", "pass", `${signer.address} (from ${signer.source})`);
+    else add("wallet", "signing key", opts.live ? "fail" : "skip", "none loaded; quotes, shadow and paper work without one (`haelo key import`)");
+    if (!signer && address) add("wallet", "watch address", "pass", address);
+  } catch (e) {
+    add("wallet", "signing key", "fail", errorMessage(e));
+  }
+  if (address && rpcOk) {
     try {
-      const local = loadLocalSigner(env, { privateKeyEnv: b.privateKeyEnv, keystoreEnv: b.keystoreEnv });
-      add(
-        "robinhood chain",
-        "signer",
-        local ? "pass" : opts.live ? "fail" : "warn",
-        local ? `loaded from ${local.kind}, address ${local.account.address}` : `no ${b.privateKeyEnv} or ${b.keystoreEnv}; quotes work, live sends do not`,
-      );
+      const lamports = await rpc.getBalance(address);
+      const sol = fromUnits(lamports, 9);
+      const need = b.reserveSol + b.maxFeeSol;
+      add("wallet", "SOL for fees", sol >= need ? "pass" : opts.live ? "fail" : "warn", `${sol} SOL${sol >= need ? "" : ` (keep at least ${need} SOL for fees)`}`);
+      const balances = await rpc.getTokenBalances(address);
+      add("wallet", "USDC", "pass", `${fromUnits(balances.get(USDC_MINT) ?? 0n, 6)} USDC`);
     } catch (e) {
-      add("robinhood chain", "signer", "fail", errorMessage(e));
+      add("wallet", "balances", "fail", errorMessage(e));
     }
-    try {
-      const reader = viemReader(b.rpcUrl);
-      const id = await reader.getChainId();
-      add("robinhood chain", "chain id", id === ROBINHOOD_MAINNET.chainId ? "pass" : "fail", `eth_chainId ${id}, expected ${ROBINHOOD_MAINNET.chainId}`);
-      const code = await reader.getBytecode(ROBINHOOD_MAINNET.swapRouter02);
-      add("robinhood chain", "SwapRouter02", code && code !== "0x" ? "pass" : "fail", ROBINHOOD_MAINNET.swapRouter02);
-      const quote = await bestQuote(reader, ROBINHOOD_MAINNET.weth, ROBINHOOD_MAINNET.usdg, 10n ** 15n);
-      add("robinhood chain", "on-chain quote", quote.amountOut > 0n ? "pass" : "fail", `0.001 WETH quotes ${quote.amountOut.toString()} USDG base units at fee ${quote.fee}`);
-    } catch (e) {
-      add("robinhood chain", "rpc", "fail", errorMessage(e));
-    }
-  } else if (b.type === "robinhood-crypto") {
-    const key = env[b.apiKeyEnv];
-    const pk = env[b.privateKeyEnv];
-    if (!key || !pk) add("robinhood crypto", "credentials", "fail", `${b.apiKeyEnv} / ${b.privateKeyEnv} not set`);
-    else {
-      try {
-        const broker = new RobinhoodCryptoBroker({ apiKey: key, privateKeyBase64: pk, apiVersion: b.apiVersion, baseUrl: opts.urls?.robinhood ?? b.baseUrl, ...f });
-        add("robinhood crypto", "private key", "pass", "valid 32-byte Ed25519 seed");
-        const a = await broker.getAccount("live");
-        add("robinhood crypto", "signed request", "pass", `account ${a.id.slice(0, 4)}..., buying power ${a.buyingPower} ${a.currency ?? "USD"}`);
-        const q = await broker.getQuote("BTC-USD");
-        add("robinhood crypto", "market data", "pass", `BTC-USD bid ${q.bid} / ask ${q.ask}`);
-      } catch (e) {
-        add("robinhood crypto", "signed request", "fail", errorMessage(e));
-      }
-    }
-  } else {
-    const bearer = b.bearerTokenEnv ? env[b.bearerTokenEnv] : undefined;
-    let oauth: SecretOAuthProvider | undefined;
-    if (b.url && !bearer) {
-      oauth = new SecretOAuthProvider(openSecretStore(cfg.secrets.store, l.stateDir), l.stateDir, b.url, b.oauthPort, () => undefined);
-      add("upstream", "oauth tokens", oauth.hasTokens() ? "pass" : "fail", oauth.hasTokens() ? `stored (${oauth.storeKind})` : "not signed in: run `haelo auth`");
-    }
-    const ad = new McpUpstreamAdapter({
-      ...(b.url ? { url: b.url } : {}),
-      ...(b.command ? { command: b.command, args: b.args } : {}),
-      ...(bearer ? { bearerToken: bearer } : {}),
-      ...(oauth ? { oauth } : {}),
-      toolOverrides: b.toolOverrides,
-    });
-    try {
-      await ad.connect();
-      const tools = await ad.listTools();
-      const counts: Record<string, number> = {};
-      for (const t of tools) {
-        const e = ad.classify(t).effect;
-        counts[e] = (counts[e] ?? 0) + 1;
-      }
-      add("upstream", "connect + tools/list", "pass", `${tools.length} tools: ${Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(", ")}`);
-      if ((counts["order_place"] ?? 0) === 0) add("upstream", "order tools", "warn", "no tool was classified as an order; check names / toolOverrides");
-      if (counts["unknown"]) add("upstream", "unknown tools", "warn", `${counts["unknown"]} tools are unclassified and will be hidden and blocked; add toolOverrides if any are needed`);
-      const names = new Set(tools.map((t) => t.name));
-      const configured: Array<[string, string | undefined]> = [
-        ["quoteTools.equity", b.quoteTools.equity],
-        ["quoteTools.crypto", b.quoteTools.crypto],
-        ["accountTool", b.accountTool],
-        ["positionsTool", b.positionsTool],
-        ["ordersTool", b.ordersTool],
-        ["taxLotsTool", b.taxLotsTool],
-        ["cancelAllTool", b.cancelAllTool],
-      ];
-      for (const [k, v] of configured) if (v) add("upstream", k, names.has(v) ? "pass" : "fail", names.has(v) ? v : `${v} is not in the upstream tools/list`);
-      if (!b.quoteTools.equity && !b.quoteTools.crypto) add("upstream", "quote tool", "warn", "no quoteTools configured; orders sized in shares cannot be priced reliably");
-    } catch (e) {
-      add("upstream", "connect + tools/list", "fail", errorMessage(e));
-    } finally {
-      await ad.close();
-    }
+    if (cfg.agent.accountId && cfg.agent.accountId !== address) add("wallet", "account wall", "fail", `agent.accountId ${cfg.agent.accountId} is not this wallet`);
   }
 
   // ---- go-live readiness
   if (opts.live) {
     add("live", "live.enabled", cfg.live.enabled ? "pass" : "fail", cfg.live.enabled ? "live trading opted in" : "set live: { enabled: true } in haelo.yaml, then `haelo policy lock`");
-    add("live", "agent.accountId", cfg.agent.accountId ? "pass" : "warn", cfg.agent.accountId ? `account wall: ${cfg.agent.accountId}` : "no account wall set; set agent.accountId to the dedicated agent account");
+    add("live", "agent.accountId", cfg.agent.accountId ? "pass" : "warn", cfg.agent.accountId ? `account wall: ${cfg.agent.accountId}` : "no account wall set; set agent.accountId to the dedicated agent wallet");
     add("live", "micro caps", cfg.rungs.micro.maxOrderUsd !== undefined && cfg.rungs.micro.maxOrderUsd <= 100 ? "pass" : "warn", `micro maxOrderUsd ${cfg.rungs.micro.maxOrderUsd ?? cfg.rails.maxOrderUsd}`);
     add("live", "auto-promotion", cfg.ladder.autoPromote.enabled && ["micro", "standard"].includes(cfg.ladder.autoPromote.maxRung) ? "warn" : "pass", cfg.ladder.autoPromote.enabled ? `auto-promote up to ${cfg.ladder.autoPromote.maxRung}` : "humans promote");
-    if (b.type === "mcp-upstream") add("live", "upstream verification", "warn", "the Robinhood MCP adapter has not been verified against the real service; stay at propose until you have read its audit log");
+    add("live", "dedicated wallet", "warn", "use a fresh wallet that holds only what the agent may trade; never your main wallet");
   }
   return out;
 }

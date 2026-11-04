@@ -1,18 +1,26 @@
 import type { Quote } from "../../../src/types.js";
+import { JupiterClient } from "../../../src/solana/jupiter.js";
+import { DEFAULT_TOKENS, fromUnits, toUnits, type TokenInfo } from "../../../src/solana/constants.js";
 
 export function makeQuote(symbol: string, mid: number, ts = new Date().toISOString()): Quote {
-  const spread = Math.max(mid * 0.0004, 0.01);
+  const spread = Math.max(mid * 0.0004, 1e-9);
   const bid = mid - spread / 2;
   const ask = mid + spread / 2;
   return { symbol, bid, ask, mid, ts };
 }
 
-/** Used when a public ticker cannot be reached. Labelled as offline in the UI. */
+/** `SOL`, `sol-usdc` and `SOL/USDC` all become `SOL/USDC`, the same rule as the CLI's Solana venue. */
+export function normalizePair(symbol: string): string {
+  const raw = symbol.trim().toUpperCase().replace(/[-_]/g, "/");
+  const [base, quote] = raw.includes("/") ? raw.split("/") : [raw, "USDC"];
+  return `${base}/${quote}`;
+}
+
+/** Used when Jupiter cannot be reached. Labelled as offline in the UI. */
 export const OFFLINE_MIDS: Record<string, number> = {
-  "BTC-USD": 100_000,
-  "ETH-USD": 3_500,
-  "SOL-USD": 180,
-  AAPL: 220,
+  "SOL/USDC": 150,
+  "JUP/USDC": 0.5,
+  "BONK/USDC": 0.00002,
 };
 
 export function offlineQuotes(ts?: string): Record<string, Quote> {
@@ -21,7 +29,7 @@ export function offlineQuotes(ts?: string): Record<string, Quote> {
   return out;
 }
 
-export type PriceSource = "coinbase" | "kraken" | "offline";
+export type PriceSource = "jupiter" | "offline";
 
 export interface MarketBook {
   quotes: Record<string, Quote>;
@@ -30,103 +38,32 @@ export interface MarketBook {
   note: string;
 }
 
-const PAIRS: Array<{ symbol: string; coinbase: string; kraken: string }> = [
-  { symbol: "BTC-USD", coinbase: "BTC-USD", kraken: "XBTUSD" },
-  { symbol: "ETH-USD", coinbase: "ETH-USD", kraken: "ETHUSD" },
-  { symbol: "SOL-USD", coinbase: "SOL-USD", kraken: "SOLUSD" },
-];
+const USDC = DEFAULT_TOKENS.find((t) => t.symbol === "USDC") as TokenInfo;
 
-async function fromCoinbase(signal: AbortSignal): Promise<Record<string, Quote>> {
-  const quotes: Record<string, Quote> = {};
-  await Promise.all(
-    PAIRS.map(async (pair) => {
-      const res = await fetch(`https://api.exchange.coinbase.com/products/${pair.coinbase}/ticker`, { signal });
-      if (!res.ok) throw new Error(`Coinbase ${pair.coinbase} ${res.status}`);
-      const body = (await res.json()) as { bid?: string; ask?: string; price?: string; time?: string };
-      const bid = Number(body.bid);
-      const ask = Number(body.ask);
-      const mid = Number(body.price);
-      if (!Number.isFinite(bid) || !Number.isFinite(ask) || bid <= 0 || ask <= 0) {
-        if (!Number.isFinite(mid) || mid <= 0) throw new Error(`Coinbase ${pair.coinbase} had no price`);
-        quotes[pair.symbol] = makeQuote(pair.symbol, mid, body.time);
-        return;
-      }
-      quotes[pair.symbol] = { symbol: pair.symbol, bid, ask, mid: (bid + ask) / 2, ts: body.time ?? new Date().toISOString() };
-    }),
-  );
-  quotes["AAPL"] = makeQuote("AAPL", OFFLINE_MIDS["AAPL"] ?? 220);
-  return quotes;
+/** Bid and ask for base/USDC from two quote-only Jupiter orders, the same method as `haelo quote`. */
+export async function jupiterQuote(jup: JupiterClient, base: TokenInfo): Promise<Quote> {
+  const one = 10n ** BigInt(base.decimals);
+  const sold = await jup.order({ inputMint: base.mint, outputMint: USDC.mint, amount: one });
+  const bid = fromUnits(sold.outAmount, USDC.decimals);
+  const spend = toUnits(Math.max(bid, 1 / 10 ** USDC.decimals), USDC.decimals);
+  const bought = await jup.order({ inputMint: USDC.mint, outputMint: base.mint, amount: spend });
+  const baseOut = fromUnits(bought.outAmount, base.decimals);
+  const ask = Math.max(baseOut > 0 ? fromUnits(spend, USDC.decimals) / baseOut : bid, bid);
+  return { symbol: `${base.symbol}/USDC`, bid, ask, mid: (bid + ask) / 2, ts: new Date().toISOString() };
 }
 
-async function fromKraken(signal: AbortSignal): Promise<Record<string, Quote>> {
-  const query = PAIRS.map((p) => p.kraken).join(",");
-  const res = await fetch(`https://api.kraken.com/0/public/Ticker?pair=${query}`, { signal });
-  if (!res.ok) throw new Error(`Kraken ${res.status}`);
-  const body = (await res.json()) as { error?: string[]; result?: Record<string, { a?: string[]; b?: string[]; c?: string[] }> };
-  if (body.error && body.error.length > 0) throw new Error(body.error.join(", "));
-  const result = body.result ?? {};
-  const quotes: Record<string, Quote> = {};
-  for (const pair of PAIRS) {
-    const row =
-      result[pair.kraken] ??
-      Object.entries(result).find(([k]) => k.includes(pair.kraken.replace("XBT", "XBT")) || k.endsWith(pair.kraken.slice(-3)))?.[1];
-    const found = result[pair.kraken] ?? findKraken(result, pair.kraken);
-    if (!found && !row) throw new Error(`Kraken missing ${pair.kraken}`);
-    const ticker = found ?? row;
-    if (!ticker) throw new Error(`Kraken missing ${pair.kraken}`);
-    const bid = Number(ticker.b?.[0]);
-    const ask = Number(ticker.a?.[0]);
-    const last = Number(ticker.c?.[0]);
-    const mid = Number.isFinite(bid) && Number.isFinite(ask) ? (bid + ask) / 2 : last;
-    if (!Number.isFinite(mid) || mid <= 0) throw new Error(`Kraken bad price for ${pair.kraken}`);
-    quotes[pair.symbol] =
-      Number.isFinite(bid) && Number.isFinite(ask) && bid > 0 && ask > 0
-        ? { symbol: pair.symbol, bid, ask, mid, ts: new Date().toISOString() }
-        : makeQuote(pair.symbol, mid);
-  }
-  quotes["AAPL"] = makeQuote("AAPL", OFFLINE_MIDS["AAPL"] ?? 220);
-  return quotes;
-}
-
-function findKraken(
-  result: Record<string, { a?: string[]; b?: string[]; c?: string[] }>,
-  pair: string,
-): { a?: string[]; b?: string[]; c?: string[] } | undefined {
-  if (result[pair]) return result[pair];
-  const want = pair.replace("XBT", "XXBT").replace("USD", "ZUSD");
-  return result[want] ?? result[`X${pair}`] ?? Object.entries(result).find(([k]) => k.includes(pair.slice(0, 3)))?.[1];
-}
-
-export async function loadMarket(signal?: AbortSignal): Promise<MarketBook> {
-  const own = new AbortController();
-  const timer = setTimeout(() => own.abort(), 6000);
-  const linked = signal ?? own.signal;
+export async function loadMarket(jup = new JupiterClient()): Promise<MarketBook> {
+  const bases = DEFAULT_TOKENS.filter((t) => t.symbol !== "USDC");
   try {
-    try {
-      const quotes = await fromCoinbase(linked);
-      return {
-        quotes,
-        source: "coinbase",
-        fetchedAt: new Date().toISOString(),
-        note: "Bid/ask from the Coinbase Exchange public ticker. No key, no account.",
-      };
-    } catch {
-      const quotes = await fromKraken(linked);
-      return {
-        quotes,
-        source: "kraken",
-        fetchedAt: new Date().toISOString(),
-        note: "Bid/ask from the Kraken public ticker. No key, no account.",
-      };
-    }
+    const quotes: Record<string, Quote> = {};
+    for (const q of await Promise.all(bases.map((b) => jupiterQuote(jup, b)))) quotes[q.symbol] = q;
+    return { quotes, source: "jupiter", fetchedAt: new Date().toISOString(), note: "Bid/ask from live Jupiter routes on Solana mainnet. No key, no account." };
   } catch {
     return {
       quotes: offlineQuotes(),
       source: "offline",
       fetchedAt: new Date().toISOString(),
-      note: "Public tickers were unreachable. These are labelled offline marks, not live quotes. Shadow fills still run.",
+      note: "Jupiter was unreachable. These are labelled offline marks, not live quotes. Shadow fills still run.",
     };
-  } finally {
-    clearTimeout(timer);
   }
 }

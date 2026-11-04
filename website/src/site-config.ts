@@ -1,6 +1,6 @@
 import * as z from "zod/v4";
 
-export const DEFAULT_REOWN_PROJECT_ID = "d55fd8ddbd81e9b400102b491e41a339";
+export const DEFAULT_SOLANA_RPC = "https://api.mainnet-beta.solana.com";
 
 const siteConfigSchema = z.object({
   token: z.object({
@@ -11,11 +11,12 @@ const siteConfigSchema = z.object({
   social: z.object({
     x: z.string().url().default("https://x.com/HaeloBot"),
   }),
-  reown: z
+  /** RPC the browser uses to read token mints and simulate swaps. A keyed RPC with CORS enabled works best. */
+  solana: z
     .object({
-      projectId: z.string().min(1).default(DEFAULT_REOWN_PROJECT_ID),
+      rpcUrl: z.string().url().default(DEFAULT_SOLANA_RPC),
     })
-    .default({ projectId: DEFAULT_REOWN_PROJECT_ID }),
+    .default({ rpcUrl: DEFAULT_SOLANA_RPC }),
 });
 
 export type SiteConfig = z.infer<typeof siteConfigSchema>;
@@ -27,7 +28,7 @@ export const FALLBACK_CONFIG: SiteConfig = {
     buyUrlTemplate: "https://ponsfamily.com/launchpad/{CA}",
   },
   social: { x: "https://x.com/HaeloBot" },
-  reown: { projectId: DEFAULT_REOWN_PROJECT_ID },
+  solana: { rpcUrl: DEFAULT_SOLANA_RPC },
 };
 
 const PLACEHOLDER = /^(coming soon|ca coming soon|tbd|placeholder|todo|none|null)$/i;

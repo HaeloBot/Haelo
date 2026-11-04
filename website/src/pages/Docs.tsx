@@ -8,8 +8,8 @@ const TABS = [
     code: `{
   "mcpServers": {
     "haelo": {
-      "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/haelo/dist/cli.js", "serve", "--stdio", "--config", "/ABSOLUTE/PATH/TO/haelo.yaml"]
+      "command": "npx",
+      "args": ["-y", "haelo-solana", "serve", "--stdio", "--config", "/ABSOLUTE/PATH/TO/haelo.yaml"]
     }
   }
 }`,
@@ -20,12 +20,8 @@ const TABS = [
     code: `{
   "mcpServers": {
     "haelo": {
-      "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/haelo/dist/cli.js", "serve", "--stdio", "--config", "/ABSOLUTE/PATH/TO/haelo.yaml"],
-      "env": {
-        "ALPACA_PAPER_KEY_ID": "PK...",
-        "ALPACA_PAPER_SECRET_KEY": "..."
-      }
+      "command": "npx",
+      "args": ["-y", "haelo-solana", "serve", "--stdio", "--config", "/ABSOLUTE/PATH/TO/haelo.yaml"]
     }
   }
 }`,
@@ -49,25 +45,22 @@ export default function Docs(): React.ReactElement {
   const current = TABS.find((t) => t.id === tab) ?? TABS[0];
   return (
     <article className="page prose">
-      <Meta title="Docs: Haelo" description="Install Haelo and connect Claude Desktop or Cursor. Live trading stays on the local CLI." />
+      <Meta title="Docs: Haelo" description="Install Haelo for Solana and connect Claude Desktop or Cursor. Live swaps are signed on your own machine." />
       <p className="kicker">Quickstart</p>
       <h1 className="display">Install it locally.</h1>
-      <p>The website does not hold a broker session. These commands are the real gateway. Node 22.13 or newer.</p>
-      <pre className="code">{`git clone https://github.com/HaeloBot/Haelo && cd Haelo
-npm ci && npm run build
+      <p>These commands are the real gateway. Node 22.13 or newer. No key is needed until you go live.</p>
+      <pre className="code">{`npm i -g haelo-solana
 
-node dist/cli.js mock-upstream --port 8799 &
-mkdir /tmp/haelo-demo && cd /tmp/haelo-demo
-node /path/to/Haelo/dist/cli.js init --broker mock
-node /path/to/Haelo/dist/cli.js policy lock
-node /path/to/Haelo/dist/cli.js doctor
-node /path/to/Haelo/dist/cli.js serve --http`}</pre>
-      <h2>Alpaca paper</h2>
-      <p>A free paper account is enough to leave the mock. Keys stay in the environment. They never go in the YAML, and this website will not take them.</p>
-      <pre className="code">{`export ALPACA_PAPER_KEY_ID=PK... ALPACA_PAPER_SECRET_KEY=...
-haelo init --broker alpaca && haelo policy lock
+haelo init                 # Solana mainnet-beta, Jupiter, live off
+haelo quote SOL/USDC       # live Jupiter price
+haelo policy lock
 haelo doctor
 haelo serve --stdio`}</pre>
+      <h2>Going live, later</h2>
+      <p>Use a dedicated wallet with only what the agent may trade. The key goes in your OS keychain, never in the YAML, and this website will never ask for it.</p>
+      <pre className="code">{`haelo key import --file agent-wallet.json
+export HAELO_RPC_URL=https://your-private-rpc...
+haelo doctor --live`}</pre>
       <h2>Connect an agent</h2>
       <div className="tabs" role="tablist">
         {TABS.map((t) => (
@@ -82,10 +75,11 @@ haelo serve --stdio`}</pre>
       </p>
       <h2>What the agent is allowed to call</h2>
       <p>
-        Read tools from the broker, a normalized order tool, and a short list of <code>haelo_*</code> tools: status, preflight, propose, explain a block, shadow report, request promotion, and a kill switch that drops the agent to shadow. There is no tool that promotes, approves, or edits policy. Robinhood Chain swaps, when you opt in on the CLI, are documented in <code>docs/CHAIN.md</code>. This website does not take a key and does not send them.
+        <code>get_quote</code>, <code>get_account</code>, <code>get_positions</code>, <code>place_order</code>, and a short list of <code>haelo_*</code> tools: status, preflight, propose, explain a block, shadow report, request promotion, and a kill switch that drops the agent to shadow. There is no tool that promotes, approves, transfers, or edits policy. How a live swap is simulated before it is signed is in <code>docs/SOLANA.md</code>.
       </p>
       <h2>The human's commands</h2>
-      <pre className="code">{`haelo status | report
+      <pre className="code">{`haelo key import | show | forget
+haelo status | report
 haelo promote [--force]
 haelo demote | panic
 haelo proposals

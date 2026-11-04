@@ -1,7 +1,7 @@
 {
-  "name": "haelo-mcp",
-  "version": "0.4.0",
-  "description": "Autonomy ladder gateway for AI trading agents: an MCP server that earns agents more freedom (shadow, paper, propose, micro, standard) and demotes them automatically.",
+  "name": "haelo-solana",
+  "version": "0.1.0",
+  "description": "Autonomy ladder gateway for AI trading agents on Solana: an MCP server that makes agents earn the right to swap through Jupiter (shadow, paper, propose, micro, standard) and demotes them automatically.",
   "license": "MIT",
   "type": "module",
   "author": "Kavindu Diluka",
@@ -14,7 +14,7 @@
   },
   "bin": {
     "haelo": "dist/cli.js",
-    "haelo-mcp": "dist/cli.js"
+    "haelo-solana": "dist/cli.js"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -40,31 +40,30 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "smoke:alpaca": "node dist/scripts/smoke-alpaca.js",
     "prepublishOnly": "npm run build && npm test",
-    "smoke:robinhood-crypto": "node dist/scripts/smoke-robinhood-crypto.js",
     "doctor": "node dist/cli.js doctor"
   },
   "keywords": [
     "mcp",
     "model-context-protocol",
+    "solana",
+    "jupiter",
     "trading",
     "ai-agents",
     "guardrails",
-    "alpaca",
-    "robinhood",
     "autonomy"
   ],
   "dependencies": {
-    "@modelcontextprotocol/client": "^2.4.0",
     "@modelcontextprotocol/node": "^2.1.2",
     "@modelcontextprotocol/server": "^2.4.0",
-    "viem": "^2.57.16",
+    "bs58": "^6.0.0",
     "yaml": "^2.9.1",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "@solana/web3.js": "^1.98.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@modelcontextprotocol/client": "^2.4.0",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.14.0",
@@ -78,7 +77,11 @@
     "url": "git+https://github.com/HaeloBot/Haelo.git"
   },
   "overrides": {
-    "minimatch": "^11.0.4"
+    "minimatch": "^11.0.4",
+    "jayson": {
+      "stream-json": "^3.8.0",
+      "uuid": "^11.1.1"
+    }
   },
   "optionalDependencies": {
     "@napi-rs/keyring": "^2.1.2"
