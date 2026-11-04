@@ -1,0 +1,92 @@
+{
+  "name": "haelo-solana",
+  "version": "0.1.0",
+  "description": "Autonomy ladder gateway for AI trading agents on Solana: an MCP server that makes agents earn the right to swap through Jupiter (shadow, paper, propose, micro, standard) and demotes them automatically.",
+  "license": "MIT",
+  "type": "module",
+  "author": "Kavindu Diluka",
+  "homepage": "https://haelobot.com",
+  "bugs": {
+    "url": "https://github.com/HaeloBot/haelo-solana/issues"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "bin": {
+    "haelo": "dist/cli.js",
+    "haelo-solana": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "examples",
+    "docs",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "haelo.example.yaml"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build && npm test",
+    "doctor": "node dist/cli.js doctor"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "solana",
+    "jupiter",
+    "trading",
+    "ai-agents",
+    "guardrails",
+    "autonomy"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/node": "^2.1.2",
+    "@modelcontextprotocol/server": "^2.4.0",
+    "bs58": "^6.0.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7",
+    "@solana/web3.js": "^1.98.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.1.0",
+    "eslint": "^10.14.0",
+    "fast-check": "^4.10.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HaeloBot/haelo-solana.git"
+  },
+  "overrides": {
+    "minimatch": "^11.0.4",
+    "jayson": {
+      "stream-json": "^3.8.0",
+      "uuid": "^11.1.1"
+    }
+  },
+  "optionalDependencies": {
+    "@napi-rs/keyring": "^2.1.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
