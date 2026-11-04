@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
+import { Client, StreamableHTTPClientTransport, UnauthorizedError } from "@modelcontextprotocol/client";
 import { loadConfig, expandHome, type LoadedConfig } from "./policy/load.js";
 import { createHaelo } from "./factory.js";
 import { verifyFile } from "./audit.js";
@@ -10,12 +11,13 @@ import { runDoctor, formatDoctor } from "./doctor.js";
 import { initialState } from "./ladder.js";
 import { startApprovalsUi } from "./server/approvals-ui.js";
 import { openStorage } from "./storage/index.js";
+import { SecretOAuthProvider, listenForOAuthCallback } from "./oauth.js";
 import { openSecretStore } from "./secrets.js";
 import { startHttp } from "./server/http.js";
 import { startStdio } from "./server/stdio.js";
-import { configTemplate } from "./templates.js";
-import { KEYCHAIN_ENTRY, loadSigner, parseSecretKey, readKeypairFile } from "./solana/signer.js";
-import bs58 from "bs58";
+import { createMockUpstreamServer, newMockUpstreamState, startMockUpstream } from "./testkit/mock-upstream.js";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
+import { configTemplate, type TemplateBroker } from "./templates.js";
 import { VERSION } from "./version.js";
 import type { Proposal } from "./state.js";
 import { errorMessage, sha256 } from "./util.js";
@@ -27,20 +29,19 @@ export interface CliIo {
   cwd: string;
 }
 
-const HELP = `haelo ${VERSION}: an autonomy ladder for AI trading agents on Solana
+const HELP = `haelo ${VERSION}: an autonomy ladder for AI trading agents
 
 Usage: haelo <command> [options]
 
 Setup
-  init [--force]                                                       Write haelo.yaml and create the state directory
-  policy lock | show | check                                           Lock the policy hash, print it, or compare it to the lock
-  key import --file <id.json> | --stdin                                Store a Solana keypair in the OS keychain (or a 0600 file)
-  key show | forget                                                    Print the wallet address and where the key lives, or remove it
+  init [--broker alpaca|robinhood-crypto|robinhood-chain|mcp-upstream|mock] [--force]   Write haelo.yaml and create the state directory
+  policy lock | show | check                                          Lock the policy hash, print it, or compare it to the lock
+  auth                                                                Sign in to an OAuth-protected upstream MCP server (Robinhood)
 
 Run
   serve --stdio                                                        Serve the gateway over stdio (for Claude Desktop, Cursor, ...)
   serve --http [--port 8787] [--host 127.0.0.1]                        Serve Streamable HTTP at /mcp (bearer token required)
-  quote <pair>                                                         Live Jupiter quote, for example: haelo quote SOL/USDC
+  mock-upstream [--port 8799 | --stdio]                                Start a local mock broker MCP server for trying Haelo with no account
 
 Operate (human-only actions)
   status [--json]                                                      Rung, caps, stats, pending approvals
@@ -50,10 +51,10 @@ Operate (human-only actions)
   panic                                                                Drop to shadow and cancel open orders
   proposals                                                            List order proposals
   approve <id> [--yes] | decline <id>                                  Decide a proposal
-  pin status | approve                                                 Review and re-approve the pinned tool list
+  pin status | approve                                                 Review and re-approve the upstream tool list
   approvals-ui [--port 8790]                                           Local web page to approve/decline proposals (loopback, token)
   audit verify | tail [-n 20] | export [--out f]                       Check the hash chain, show recent entries, export JSONL
-  doctor [--live] [--json]                                             Read-only preflight: config, storage, key, RPC, Jupiter, balances
+  doctor [--live] [--json]                                             Read-only preflight: config, storage, credentials, connectivity
 
 Global: --config <path> (default: $HAELO_CONFIG or ./haelo.yaml), --help, --version
 `;
@@ -121,17 +122,19 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
   try {
     switch (cmd) {
       case "init": {
-        const { values } = parseArgs({ args: rest, options: { ...common, dir: { type: "string" }, "state-dir": { type: "string" } }, allowPositionals: false });
+        const { values } = parseArgs({ args: rest, options: { ...common, broker: { type: "string" }, dir: { type: "string" }, "state-dir": { type: "string" } }, allowPositionals: false });
+        const broker = (values.broker ?? "alpaca") as TemplateBroker;
+        if (!["alpaca", "robinhood-crypto", "robinhood-chain", "mcp-upstream", "mock"].includes(broker)) throw new Error(`Unknown broker "${broker}".`);
         const dir = resolve(io.cwd, values.dir ?? ".");
         const target = join(dir, "haelo.yaml");
         if (existsSync(target) && !values.force) throw new Error(`${target} already exists. Use --force to overwrite.`);
         mkdirSync(dir, { recursive: true });
         const stateDirOpt = values["state-dir"];
-        writeFileSync(target, configTemplate(stateDirOpt ? { stateDir: stateDirOpt } : {}));
+        writeFileSync(target, configTemplate(broker, stateDirOpt ? { stateDir: stateDirOpt } : {}));
         const loaded = loadConfig(target);
         mkdirSync(loaded.stateDir, { recursive: true, mode: 0o700 });
         const t = readOrCreateToken(loaded, io.env);
-        io.out(`Wrote ${target}\nState directory: ${loaded.stateDir}\nHTTP token stored at ${t.source} (mode 600)\n\nNext:\n  1. Review haelo.yaml. Quotes and shadow need no key.\n  2. haelo quote SOL/USDC   (checks Jupiter and the RPC)\n  3. haelo policy lock\n  4. haelo serve --stdio   (or --http)\n  Live swaps later: haelo key import --file ~/.config/solana/id.json, then haelo doctor --live\n`);
+        io.out(`Wrote ${target}\nState directory: ${loaded.stateDir}\nHTTP token stored at ${t.source} (mode 600)\n\nNext:\n  1. Review haelo.yaml and set credentials in your environment (.env.example).\n  2. haelo policy lock\n  3. haelo serve --stdio   (or --http)\n`);
         return 0;
       }
       case "policy": {
@@ -188,7 +191,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         } else {
           io.err("warning: policy is not locked. Run `haelo policy lock` so edits to haelo.yaml cannot go unnoticed.\n");
         }
-        const core = await createHaelo(l, { env: io.env });
+        const core = createHaelo(l, { env: io.env });
         await core.init();
         core.audit.append("policy_loaded", { hash: l.hash, locked: existsSync(lf) });
         if (values.stdio) {
@@ -217,24 +220,25 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         });
         return 0;
       }
-      case "quote": {
-        const { values, positionals } = parseArgs({ args: rest, options: common, allowPositionals: true });
-        const pair = positionals[0];
-        if (!pair) throw new Error("Usage: haelo quote <pair>, for example haelo quote SOL/USDC");
-        const core = await createHaelo(loadOrThrow(values, io), { env: io.env });
-        try {
-          await core.adapter.connect();
-          const q = await core.adapter.quote(pair);
-          if (values.json) io.out(JSON.stringify(q, null, 2) + "\n");
-          else io.out(`${q.symbol}  bid ${q.bid}  ask ${q.ask}  mid ${q.mid}  (Jupiter, ${q.ts})\n`);
-        } finally {
-          await core.close();
+      case "mock-upstream": {
+        const { values } = parseArgs({ args: rest, options: { port: { type: "string" }, stdio: { type: "boolean" } }, allowPositionals: false });
+        if (values.stdio) {
+          const state = newMockUpstreamState();
+          const h = serveStdio(() => createMockUpstreamServer(state));
+          await new Promise<void>((res) => process.stdin.once("end", () => void Promise.resolve(h.close?.()).finally(res)));
+          return 0;
         }
+        const m = await startMockUpstream({ port: values.port ? Number(values.port) : 8799 });
+        io.err(`mock upstream broker MCP listening at ${m.url} (test double: argument shapes are assumptions)\n`);
+        await new Promise<void>((res) => {
+          process.once("SIGINT", () => void m.close().finally(res));
+          process.once("SIGTERM", () => void m.close().finally(res));
+        });
         return 0;
       }
       case "status": {
         const { values } = parseArgs({ args: rest, options: common, allowPositionals: false });
-        const core = await createHaelo(loadOrThrow(values, io), { env: io.env, offline: true });
+        const core = createHaelo(loadOrThrow(values, io), { env: io.env, offline: true });
         const s = core.status();
         if (values.json) io.out(JSON.stringify(s, null, 2) + "\n");
         else {
@@ -256,7 +260,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       }
       case "report": {
         const { values } = parseArgs({ args: rest, options: common, allowPositionals: false });
-        const core = await createHaelo(loadOrThrow(values, io), { env: io.env });
+        const core = createHaelo(loadOrThrow(values, io), { env: io.env });
         const promo = await core.promotionReport();
         const shadow = await core.shadowReport().catch((e) => ({ error: errorMessage(e) }));
         io.out(JSON.stringify({ shadow, promotion: promo }, null, 2) + "\n");
@@ -264,7 +268,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       }
       case "promote": {
         const { values } = parseArgs({ args: rest, options: common, allowPositionals: false });
-        const core = await createHaelo(loadOrThrow(values, io), { env: io.env });
+        const core = createHaelo(loadOrThrow(values, io), { env: io.env });
         const r = await core.promote({ force: Boolean(values.force) });
         for (const c of r.checks) io.out(`  [${c.ok ? "ok" : "NO"}] ${c.name}: ${c.detail}\n`);
         if (r.promoted) io.out(`Promoted ${r.from} -> ${r.to}.\n`);
@@ -276,21 +280,21 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       }
       case "demote": {
         const { values } = parseArgs({ args: rest, options: common, allowPositionals: false });
-        const core = await createHaelo(loadOrThrow(values, io), { env: io.env });
+        const core = createHaelo(loadOrThrow(values, io), { env: io.env });
         const m = await core.demote("manual", "demoted by human", "human");
         io.out(m ? `Demoted ${m.from} -> ${m.to}.\n` : "Already at the lowest rung.\n");
         return 0;
       }
       case "panic": {
         const { values } = parseArgs({ args: rest, options: common, allowPositionals: false });
-        const core = await createHaelo(loadOrThrow(values, io), { env: io.env });
+        const core = createHaelo(loadOrThrow(values, io), { env: io.env });
         const m = await core.panic();
-        io.out(m ? `PANIC: ${m.from} -> ${m.to}. Swaps settle at once, so there are no open orders to cancel.\n` : "Already at shadow.\n");
+        io.out(m ? `PANIC: ${m.from} -> ${m.to}. Open orders cancelled where the broker supports it.\n` : "Already at shadow. Open orders cancelled where applicable.\n");
         return 0;
       }
       case "proposals": {
         const { values } = parseArgs({ args: rest, options: common, allowPositionals: false });
-        const core = await createHaelo(loadOrThrow(values, io), { env: io.env, offline: true });
+        const core = createHaelo(loadOrThrow(values, io), { env: io.env, offline: true });
         const ps = core.listProposals();
         if (values.json) io.out(JSON.stringify(ps, null, 2) + "\n");
         else if (ps.length === 0) io.out("No proposals.\n");
@@ -302,7 +306,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         const { values, positionals } = parseArgs({ args: rest, options: common, allowPositionals: true });
         const id = positionals[0];
         if (!id) throw new Error(`Usage: haelo ${cmd} <proposal-id>`);
-        const core = await createHaelo(loadOrThrow(values, io), { env: io.env, offline: cmd === "decline" });
+        const core = createHaelo(loadOrThrow(values, io), { env: io.env, offline: cmd === "decline" });
         const p = core.getProposal(id);
         if (!p) throw new Error(`No proposal ${id}.`);
         if (cmd === "decline") {
@@ -327,11 +331,11 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       case "pin": {
         const sub = rest[0];
         const { values } = parseArgs({ args: rest.slice(1), options: common, allowPositionals: false });
-        const core = await createHaelo(loadOrThrow(values, io), { env: io.env, offline: sub === "status" });
+        const core = createHaelo(loadOrThrow(values, io), { env: io.env, offline: sub === "status" });
         if (sub === "approve") {
           await core.adapter.connect();
           const r = await core.approvePin();
-          io.out(`Pinned ${r.tools} tools (${r.hash.slice(0, 12)}...). Orders are unfrozen. The rung is unchanged: promote again when you are ready.\n`);
+          io.out(`Pinned ${r.tools} upstream tools (${r.hash.slice(0, 12)}...). Orders are unfrozen. The rung is unchanged: promote again when you are ready.\n`);
           return 0;
         }
         if (sub === "status") {
@@ -388,7 +392,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       case "approvals-ui": {
         const { values } = parseArgs({ args: rest, options: { ...common, port: { type: "string" } }, allowPositionals: false });
         const l = loadOrThrow(values, io);
-        const core = await createHaelo(l, { env: io.env });
+        const core = createHaelo(l, { env: io.env });
         await core.init();
         const t = readOrCreateToken(l, io.env);
         const ui = await startApprovalsUi(core, { host: l.config.approvals.web.host, port: values.port !== undefined ? Number(values.port) : l.config.approvals.web.port, token: t.token });
@@ -402,38 +406,38 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         });
         return 0;
       }
-      case "key": {
-        const sub = rest[0];
-        const { values } = parseArgs({ args: rest.slice(1), options: { ...common, file: { type: "string" }, stdin: { type: "boolean" } }, allowPositionals: false });
+      case "auth": {
+        const { values } = parseArgs({ args: rest, options: common, allowPositionals: false });
         const l = loadOrThrow(values, io);
-        mkdirSync(l.stateDir, { recursive: true, mode: 0o700 });
-        const store = openSecretStore(l.config.secrets.store, l.stateDir);
-        if (sub === "import") {
-          let raw: string;
-          if (values.file) raw = readKeypairFile(resolve(io.cwd, values.file), values.file);
-          else if (values.stdin) raw = await readStdin();
-          else throw new Error("Usage: haelo key import --file <id.json> | --stdin");
-          const kp = parseSecretKey(raw);
-          store.set(KEYCHAIN_ENTRY, bs58.encode(kp.secretKey));
-          io.out(`Stored the key for ${kp.publicKey.toBase58()} in the ${store.kind === "keychain" ? "OS keychain" : "Haelo state directory (0600 file; no OS keychain available)"}.\nFund this wallet with a little SOL for fees and some USDC, then run: haelo doctor --live\n`);
-          return 0;
-        }
-        if (sub === "show") {
-          const b = l.config.broker;
-          const signer = await loadSigner(io.env, { privateKeyEnv: b.privateKeyEnv, keypairFileEnv: b.keypairFileEnv }, store);
-          if (!signer) {
-            io.out("No signing key loaded. Quotes, shadow and paper work without one.\n");
-            return 1;
+        const b = l.config.broker;
+        if (b.type !== "mcp-upstream" || !b.url) throw new Error("`haelo auth` applies to broker.type: mcp-upstream with a url.");
+        const provider = new SecretOAuthProvider(openSecretStore(l.config.secrets.store, l.stateDir), l.stateDir, b.url, b.oauthPort, (u) => io.err(`\nOpen this URL in your browser to sign in:\n\n  ${u.toString()}\n\nWaiting for the redirect on http://127.0.0.1:${b.oauthPort}/callback ...\n`));
+        const listener = listenForOAuthCallback(b.oauthPort);
+        const mk = (): { client: Client; transport: StreamableHTTPClientTransport } => ({
+          client: new Client({ name: "haelo-auth", version: VERSION }, { versionNegotiation: { mode: "auto" } }),
+          transport: new StreamableHTTPClientTransport(new URL(b.url as string), { authProvider: provider }),
+        });
+        let first = mk();
+        try {
+          await first.client.connect(first.transport);
+          listener.close();
+          io.out("Already authorized.\n");
+        } catch (e) {
+          if (!(e instanceof UnauthorizedError)) {
+            listener.close();
+            throw e;
           }
-          io.out(`${signer.address}  (from ${signer.source === "keychain" ? `the ${store.kind}` : signer.source === "env" ? b.privateKeyEnv : b.keypairFileEnv})\n`);
-          return 0;
+          const params = await listener.promise;
+          if (params.get("state") !== provider.expectedState()) throw new Error("OAuth state mismatch; aborting.", { cause: e });
+          await first.transport.finishAuth(params);
+          first = mk();
+          await first.client.connect(first.transport);
+          io.out(`Signed in. Tokens saved in the ${provider.storeKind === "keychain" ? "OS keychain" : "Haelo state directory (0600 file; no OS keychain available)"}.\n`);
         }
-        if (sub === "forget") {
-          store.delete(KEYCHAIN_ENTRY);
-          io.out(`Removed the stored key from the ${store.kind}. Keys set through the environment are not touched.\n`);
-          return 0;
-        }
-        throw new Error("Usage: haelo key import --file <id.json> | --stdin | show | forget");
+        const tools = await first.client.listTools();
+        io.out(`Upstream exposes ${tools.tools.length} tools: ${tools.tools.map((t) => t.name).join(", ")}\nSave this list: it is what Haelo will pin on first start. Name quote/account tools in haelo.yaml.\n`);
+        await first.client.close();
+        return 0;
       }
       default:
         io.err(`Unknown command "${cmd}".\n\n${HELP}`);
@@ -443,12 +447,6 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     io.err(`error: ${errorMessage(e)}\n`);
     return 1;
   }
-}
-
-async function readStdin(): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const c of process.stdin) chunks.push(c as Buffer);
-  return Buffer.concat(chunks).toString("utf8");
 }
 
 export { expandHome, sha256 };

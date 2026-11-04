@@ -4,22 +4,15 @@ version: 1
 stateDir: ~/.haelo
 
 broker:
-  type: solana
-  # Solana mainnet-beta. The public RPC is rate limited; for live use put a private RPC URL in HAELO_RPC_URL.
-  rpcUrl: https://api.mainnet-beta.solana.com
-  # Jupiter Swap API V2. HAELO_JUPITER_API_KEY is optional (keyless tier otherwise).
-  jupiterBaseUrl: https://api.jup.ag/swap/v2
-  reserveSol: 0.02          # SOL kept for fees when selling SOL
-  maxFeeSol: 0.01           # most SOL a swap may cost beyond the SOL it sells (checked by simulation)
-  paperSimulate: true       # paper orders also simulate the real transaction when a wallet is known
-  maxConsecutiveErrors: 3   # failed live sends in a row before an automatic drop to shadow
-  tokens: {}                # extra SPL tokens, e.g. { WIF: EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm }
+  type: alpaca
+  # Credentials come from the environment (see .env.example). A free paper account is enough to start.
+  feed: iex
 
-# The only wallet the agent may trade from; orders naming another account are blocked.
-# Set it like:  agent: { accountId: "<your wallet address>" }
+# The only account the agent may trade in; orders naming another account are blocked.
+# Set it like:  agent: { accountId: "123456789" }
 agent: {}
 
-# LIVE TRADING IS OFF until you opt in here. While false, nothing is ever signed:
+# LIVE TRADING IS OFF until you opt in here. While false, nothing is ever sent to a live account:
 # micro/standard cannot be configured or promoted into, and approved proposals are not executed.
 # Before turning it on, read docs/GO_LIVE.md and run `haelo doctor --live`.
 live:
@@ -29,7 +22,7 @@ storage:
   backend: sqlite           # sqlite (<stateDir>/haelo.db) or jsonl (state.json + audit.jsonl)
 
 secrets:
-  store: auto               # where `haelo key import` keeps the key: OS keychain if available, else a 0600 file
+  store: auto               # auto = OS keychain if available, else 0600 files; or keychain / file
 
 # Hard rails. These apply at the standard rung; lower rungs can only tighten them.
 rails:
@@ -38,13 +31,12 @@ rails:
   maxOrdersPerDay: 20
   maxOrdersPerMinute: 5
   symbolCooldownSeconds: 0
-  allowSymbols: []          # empty = any pair not blocked, e.g. [SOL/USDC, JUP/USDC]
+  allowSymbols: []          # empty = any symbol not blocked
   blockSymbols: []
-  allowOrderTypes: [market] # Jupiter swaps are market exact-input swaps
-  allowAssetClasses: [crypto]
+  allowOrderTypes: [market, limit]
+  allowAssetClasses: [equity, crypto]
   allowShort: false
   maxPositionPct: 100       # max share of total equity in one symbol after an order
-  maxSlippageBps: 100       # 1% cap. A larger slippage_bps is refused
 
 # Tighter caps for rungs below standard.
 rungs:
@@ -52,7 +44,7 @@ rungs:
     maxOrderUsd: 25
     maxDailyUsd: 100
     maxOrdersPerDay: 5
-    allowSymbols: [SOL/USDC] # keep the first live rung on the deepest pair
+    allowSymbols: []        # e.g. [AAPL, MSFT] to restrict the micro rung to a short list
 
 ladder:
   start: shadow
@@ -91,12 +83,12 @@ injection:
   action: block_and_demote
 
 tools:
-  trustOnFirstUse: true     # pin the tool list on first start
+  trustOnFirstUse: true     # pin the upstream tool list on first start
   recheckSeconds: 0         # 0 = verify the tool list before every order
 
 household:
   enabled: true
-  washSale: { enabled: false, windowDays: 30, block: false, includeCrypto: false }
+  washSale: { enabled: true, windowDays: 30, block: false, includeCrypto: false }
   concentration: { maxPct: 30, block: true }
   lots: { warnDaysToLongTerm: 45 }
   requireData: false

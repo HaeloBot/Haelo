@@ -7,7 +7,7 @@ const FAQ = [
   },
   {
     q: "Does the playground trade?",
-    a: "Shadow and paper quote live Jupiter routes on Solana and do not sign. A live rung, after you opt in and tick the real-funds box, simulates the swap and asks your connected wallet to sign. The page never asks for a private key.",
+    a: "Shadow and paper quote Uniswap v3 on Robinhood Chain and do not sign. A live rung, after you opt in and tick the real-funds box, asks the connected wallet to sign. The page never asks for a private key.",
   },
   {
     q: "Why is demotion automatic and promotion human?",
@@ -26,7 +26,7 @@ const FAQ = [
 export default function About(): React.ReactElement {
   return (
     <article className="page">
-      <Meta title="About: Haelo" description="Haelo is an MCP gateway: an autonomy ladder between an AI trading agent and a Solana wallet." />
+      <Meta title="About: Haelo" description="Haelo is an MCP gateway: an autonomy ladder between an AI trading agent and a broker." />
       <p className="kicker">About</p>
       <h1 className="display">
         A gateway,

@@ -4,20 +4,20 @@ import { buyUrl, isCaSet, parseSiteConfig, truncateCa } from "../src/site-config
 describe("site config", () => {
   it("accepts the shipped file shape and keeps an empty contract address unset", () => {
     const cfg = parseSiteConfig({
-      token: { symbol: "HAELO", ca: "", buyUrlTemplate: "https://pump.fun/coin/{CA}" },
+      token: { symbol: "HAELO", ca: "", buyUrlTemplate: "https://ponsfamily.com/launchpad/{CA}" },
       social: { x: "https://x.com/HaeloBot" },
     });
     expect(cfg.token.symbol).toBe("HAELO");
     expect(isCaSet(cfg.token.ca)).toBe(false);
     expect(cfg.social.x).toBe("https://x.com/HaeloBot");
-    expect(cfg.solana.rpcUrl).toBe("https://api.mainnet-beta.solana.com");
+    expect(cfg.reown.projectId).toBe("d55fd8ddbd81e9b400102b491e41a339");
   });
 
   it("fills defaults for a partial document", () => {
     const cfg = parseSiteConfig({ token: {}, social: {} });
     expect(cfg.token.buyUrlTemplate).toContain("{CA}");
     expect(cfg.social.x).toBe("https://x.com/HaeloBot");
-    expect(cfg.solana.rpcUrl).toBe("https://api.mainnet-beta.solana.com");
+    expect(cfg.reown.projectId).toBe("d55fd8ddbd81e9b400102b491e41a339");
   });
 
   it("falls back when the document is not the config", () => {
@@ -30,10 +30,9 @@ describe("site config", () => {
     expect(isCaSet("  ")).toBe(false);
     expect(isCaSet("TBD")).toBe(false);
     expect(isCaSet("0x000")).toBe(false);
-    expect(isCaSet("0x1234567890abcdef1234567890abcdef12345678")).toBe(false); // an EVM address is not a Solana mint
     const ca = "So11111111111111111111111111111111111111112";
     expect(isCaSet(ca)).toBe(true);
     expect(truncateCa(ca)).toBe("So1111…1112");
-    expect(buyUrl("https://pump.fun/coin/{CA}", ca)).toBe(`https://pump.fun/coin/${encodeURIComponent(ca)}`);
+    expect(buyUrl("https://ponsfamily.com/launchpad/{CA}", ca)).toBe(`https://ponsfamily.com/launchpad/${encodeURIComponent(ca)}`);
   });
 });

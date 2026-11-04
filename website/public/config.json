@@ -1,13 +1,13 @@
 {
   "token": {
     "symbol": "HAELO",
-    "ca": "JBUYHYBLr5BzY62JA9Lo5r51e8yxVokNL4G2LQtpKxPT",
-    "buyUrlTemplate": "https://pump.fun/coin/{CA}"
+    "ca": "",
+    "buyUrlTemplate": "https://ponsfamily.com/launchpad/{CA}"
   },
   "social": {
     "x": "https://x.com/HaeloBot"
   },
-  "solana": {
-    "rpcUrl": "https://api.mainnet-beta.solana.com"
+  "reown": {
+    "projectId": "d55fd8ddbd81e9b400102b491e41a339"
   }
 }

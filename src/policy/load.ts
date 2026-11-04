@@ -27,6 +27,12 @@ export function parseConfig(text: string): HaeloConfig {
     throw new Error(`Invalid haelo config:\n${issues}`);
   }
   const cfg = res.data;
+  if (cfg.broker.type === "mcp-upstream" && !cfg.broker.url && !cfg.broker.command) {
+    throw new Error("Invalid haelo config:\n  - broker: mcp-upstream needs either `url` or `command`");
+  }
+  if (cfg.broker.type === "mcp-upstream" && cfg.broker.url && cfg.broker.command) {
+    throw new Error("Invalid haelo config:\n  - broker: set only one of `url` or `command`");
+  }
   if ((cfg.ladder.start === "micro" || cfg.ladder.start === "standard") && !cfg.live.enabled) {
     throw new Error(`Invalid haelo config:\n  - ladder.start: ${cfg.ladder.start} is a live rung; set live.enabled: true to opt in to live trading`);
   }

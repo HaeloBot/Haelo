@@ -15,27 +15,27 @@ const RUNGS = [
   {
     kicker: "00. No capital",
     title: "Shadow",
-    body: "Fills are simulated against live Jupiter prices, with slippage and fees. Nothing touches the chain.",
+    body: "Fills are simulated against live quotes, with slippage and fees. The broker never sees the order.",
   },
   {
-    kicker: "01. Real route, no signature",
+    kicker: "01. Broker paper",
     title: "Paper",
-    body: "A real Jupiter route, and the real transaction simulated on chain. Nothing is signed. Still not your money.",
+    body: "Orders go to the broker's paper environment when it has one. Still not your money.",
   },
   {
     kicker: "02. A human reads it",
     title: "Propose",
-    body: "Every swap is held. The approval card is built from the order itself, not from the agent's story.",
+    body: "Every order is held. The approval card is built from the order itself, not from the agent's story.",
   },
   {
     kicker: "03. Live, tiny",
     title: "Micro",
-    body: "Signed on Solana under a much tighter cap: $25 a swap, $100 a day, five swaps. Every one is simulated before it is signed.",
+    body: "Live under a much tighter cap. The default is $25 an order, $100 a day, five orders. Live stays off until you opt in.",
   },
   {
     kicker: "04. Your rails",
     title: "Standard",
-    body: "Signed under the limits you wrote down. Not unlimited. The caps, the token list, the simulation check and the audit chain stay on.",
+    body: "Live under the limits you wrote down. Not unlimited. The caps, the list, and the audit chain stay on.",
   },
 ];
 
@@ -101,7 +101,7 @@ export default function Landing(): React.ReactElement {
     <>
       <Meta
         title="Haelo: an autonomy ladder for AI trading agents"
-        description="Haelo sits between an AI trading agent and a Solana wallet. Shadow first. Live swaps only after rules you wrote down are kept."
+        description="Haelo sits between an AI agent and a broker. Shadow first. Live only after rules you wrote down are kept."
       />
       {intro ? (
         <Intro
@@ -136,7 +136,7 @@ export default function Landing(): React.ReactElement {
             <p className="lede">
               {rung
                 ? rung.body
-                : "Haelo stands between the model and your Solana wallet. The agent starts in shadow. It climbs only by meeting criteria you locked first. Break one, and the rung drops itself."}
+                : "Haelo stands between the model and the brokerage. The agent starts in shadow. It climbs only by meeting criteria you locked first. Break one, and the rung drops itself."}
             </p>
             {active < 0 ? (
               <div className="btn-row">
@@ -183,31 +183,26 @@ export default function Landing(): React.ReactElement {
       </section>
 
       <section className="band" data-fx="section">
-        <p className="kicker">Against an agent holding a wallet key</p>
+        <p className="kicker">Against a plain broker MCP</p>
         <h2 className="display" data-fx="head">The agent is untrusted.</h2>
         <table className="compare">
           <thead>
             <tr>
               <th> </th>
-              <th>Agent with a key, alone</th>
+              <th>Broker MCP, alone</th>
               <th>Haelo in front</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>First order</td>
-              <td>Signed on mainnet</td>
-              <td>Shadow. Live Jupiter prices, nothing signed</td>
+              <td>Live, if the key is live</td>
+              <td>Shadow. Live quotes, no send</td>
             </tr>
             <tr>
               <td>Size</td>
               <td>Whatever the model asks</td>
               <td>Caps per rung, fail closed if it cannot be sized</td>
-            </tr>
-            <tr>
-              <td>What gets signed</td>
-              <td>Whatever the route returns</td>
-              <td>Simulated first. Refused if the wallet would lose more than the order</td>
             </tr>
             <tr>
               <td>A bad day</td>
@@ -240,7 +235,7 @@ export default function Landing(): React.ReactElement {
           <br />
           <span className="lime">No keys.</span>
         </h2>
-        <p className="lede">The playground runs the policy evaluator on live Jupiter prices on Solana. Shadow and paper are not signed. A live rung simulates the swap, then asks your wallet to sign.</p>
+        <p className="lede">The playground runs the policy evaluator on live Robinhood Chain quotes. Shadow and paper are not signed. A live rung asks your wallet to sign.</p>
         <div className="btn-row">
           <Link className="btn" to="/playground" data-magnet>
             Run a shadow session

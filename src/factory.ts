@@ -1,12 +1,17 @@
 import { mkdirSync } from "node:fs";
-import { SolanaBroker } from "./adapters/solana.js";
+import { getAddress } from "viem";
+import { AlpacaBroker } from "./adapters/alpaca.js";
+import { RobinhoodChainBroker } from "./adapters/robinhood-chain.js";
+import { RobinhoodCryptoBroker } from "./adapters/robinhood-crypto.js";
+import { McpUpstreamAdapter } from "./adapters/mcp-upstream.js";
 import { RestAdapter } from "./adapters/rest-base.js";
 import type { BrokerAdapter, FetchFn } from "./adapters/types.js";
 import { HaeloCore } from "./core.js";
+import { SecretOAuthProvider } from "./oauth.js";
+import { viemReader, viemSender } from "./chain/executor.js";
+import { loadLocalSigner, signerAddress } from "./chain/signer.js";
+import { ROBINHOOD_MAINNET } from "./chain/uniswap.js";
 import { openSecretStore } from "./secrets.js";
-import { JupiterClient } from "./solana/jupiter.js";
-import { SolanaRpc } from "./solana/rpc.js";
-import { loadSigner, walletAddress, type SolanaSigner } from "./solana/signer.js";
 import type { LoadedConfig } from "./policy/load.js";
 import type { HaeloConfig } from "./policy/schema.js";
 import { openStorage } from "./storage/index.js";
@@ -15,48 +20,105 @@ export interface BuildOptions {
   env?: NodeJS.ProcessEnv;
   fetch?: FetchFn;
   now?: () => Date;
-  /** Use this signer instead of loading one from the environment or keychain. */
-  signer?: SolanaSigner;
-  /** Expected genesis hash. Tests point this at a local fake cluster. */
-  genesisHash?: string;
+  /** Called with the authorization URL when `haelo auth` needs the user to sign in. */
+  onOAuthRedirect?: (url: URL) => void;
 }
 
-export function rpcUrl(config: HaeloConfig, env: NodeJS.ProcessEnv): string {
-  return env[config.broker.rpcUrlEnv]?.trim() || config.broker.rpcUrl;
+function need(env: NodeJS.ProcessEnv, name: string, what: string): string {
+  const v = env[name];
+  if (!v) throw new Error(`Missing environment variable ${name} (${what}). See .env.example.`);
+  return v;
 }
 
-/** Create the Solana venue. Secrets come only from the environment or the OS keychain. */
-export async function buildAdapter(config: HaeloConfig, stateDir: string, opts: BuildOptions = {}): Promise<BrokerAdapter> {
+/** Create the broker adapter named in the config. Secrets come only from the environment. */
+export function buildAdapter(config: HaeloConfig, stateDir: string, opts: BuildOptions = {}): BrokerAdapter {
   const env = opts.env ?? process.env;
   const b = config.broker;
-  const signer =
-    opts.signer ?? (await loadSigner(env, { privateKeyEnv: b.privateKeyEnv, keypairFileEnv: b.keypairFileEnv }, openSecretStore(config.secrets.store, stateDir)));
-  const address = walletAddress(signer, env, b.addressEnv);
-  const reader = new SolanaRpc(rpcUrl(config, env), opts.fetch);
-  const apiKey = env[b.jupiterApiKeyEnv]?.trim();
-  const venue = new JupiterClient({ baseUrl: b.jupiterBaseUrl, ...(apiKey ? { apiKey } : {}), ...(opts.fetch ? { fetch: opts.fetch } : {}) });
-  return new RestAdapter(
-    new SolanaBroker(reader, venue, signer, {
-      maxSlippageBps: config.rails.maxSlippageBps,
-      reserveLamports: BigInt(Math.round(b.reserveSol * 1e9)),
-      maxFeeLamports: BigInt(Math.round(b.maxFeeSol * 1e9)),
-      paperSimulate: b.paperSimulate,
-      tokens: Object.entries(b.tokens).map(([symbol, mint]) => ({ symbol, mint })),
-      ...(address ? { address } : {}),
-      ...(opts.genesisHash ? { genesisHash: opts.genesisHash } : {}),
-      ...(opts.now ? { now: opts.now } : {}),
-    }),
-  );
+  switch (b.type) {
+    case "alpaca": {
+      const paperId = env[b.paperKeyIdEnv];
+      const paperSecret = env[b.paperSecretEnv];
+      const liveId = env[b.liveKeyIdEnv];
+      const liveSecret = env[b.liveSecretEnv];
+      if (!(paperId && paperSecret) && !(liveId && liveSecret)) {
+        throw new Error(`No Alpaca credentials found. Set ${b.paperKeyIdEnv} and ${b.paperSecretEnv} (a free paper account works), see .env.example.`);
+      }
+      return new RestAdapter(
+        new AlpacaBroker({
+          ...(paperId && paperSecret ? { paper: { keyId: paperId, secret: paperSecret } } : {}),
+          ...(liveId && liveSecret ? { live: { keyId: liveId, secret: liveSecret } } : {}),
+          paperBaseUrl: b.paperBaseUrl,
+          liveBaseUrl: b.liveBaseUrl,
+          dataBaseUrl: b.dataBaseUrl,
+          feed: b.feed,
+          fallbackSpreadBps: config.shadow.fallbackSpreadBps,
+          ...(opts.fetch ? { fetch: opts.fetch } : {}),
+          ...(opts.now ? { now: opts.now } : {}),
+        }),
+      );
+    }
+    case "robinhood-chain": {
+      const local = loadLocalSigner(env, { privateKeyEnv: b.privateKeyEnv, keystoreEnv: b.keystoreEnv });
+      const reader = viemReader(b.rpcUrl, ROBINHOOD_MAINNET.chainId);
+      const sender = local ? viemSender(b.rpcUrl, local.account, ROBINHOOD_MAINNET.chainId) : undefined;
+      const address = signerAddress(local, env, b.addressEnv);
+      const tokens = Object.entries(b.tokens).map(([symbol, token]) => ({ symbol, address: getAddress(token) }));
+      return new RestAdapter(
+        new RobinhoodChainBroker(reader, sender, {
+          deadlineSeconds: b.deadlineSeconds,
+          maxSlippageBps: config.rails.maxSlippageBps,
+          tokens,
+          ...(address ? { address } : {}),
+        }),
+      );
+    }
+    case "robinhood-crypto":
+      return new RestAdapter(
+        new RobinhoodCryptoBroker({
+          apiKey: need(env, b.apiKeyEnv, "Robinhood Crypto API key"),
+          privateKeyBase64: need(env, b.privateKeyEnv, "base64 Ed25519 private key seed"),
+          apiVersion: b.apiVersion,
+          baseUrl: b.baseUrl,
+          ...(opts.fetch ? { fetch: opts.fetch } : {}),
+          ...(opts.now ? { now: opts.now } : {}),
+        }),
+      );
+    case "mcp-upstream": {
+      const bearer = b.bearerTokenEnv ? env[b.bearerTokenEnv] : undefined;
+      if (b.bearerTokenEnv && !bearer) throw new Error(`Environment variable ${b.bearerTokenEnv} is empty.`);
+      const passEnv: Record<string, string> = {};
+      for (const k of b.passEnv) {
+        const v = env[k];
+        if (v !== undefined) passEnv[k] = v;
+      }
+      const oauth = b.url && !bearer ? new SecretOAuthProvider(openSecretStore(config.secrets.store, stateDir), stateDir, b.url, b.oauthPort, opts.onOAuthRedirect ?? (() => undefined)) : undefined;
+      return new McpUpstreamAdapter({
+        ...(b.url ? { url: b.url } : {}),
+        ...(b.command ? { command: b.command, args: b.args, env: passEnv } : {}),
+        ...(bearer ? { bearerToken: bearer } : {}),
+        ...(oauth ? { oauth } : {}),
+        quoteTools: b.quoteTools,
+        ...(b.accountTool ? { accountTool: b.accountTool } : {}),
+        ...(b.positionsTool ? { positionsTool: b.positionsTool } : {}),
+        ...(b.ordersTool ? { ordersTool: b.ordersTool } : {}),
+        ...(b.taxLotsTool ? { taxLotsTool: b.taxLotsTool } : {}),
+        ...(b.cancelAllTool ? { cancelAllTool: b.cancelAllTool } : {}),
+        toolOverrides: b.toolOverrides,
+        ...(config.agent.accountId ? { accountId: config.agent.accountId } : {}),
+        fallbackSpreadBps: config.shadow.fallbackSpreadBps,
+      });
+    }
+  }
 }
 
-/** A venue that cannot reach the network. Used by commands that only read local state (status, proposals). */
+/** An adapter that cannot reach any broker. Used by commands that only read local state (status, proposals). */
 export function offlineAdapter(config: HaeloConfig): BrokerAdapter {
   const fail = (): never => {
-    throw new Error("This command does not connect to Solana.");
+    throw new Error("This command does not load broker credentials.");
   };
   return {
     id: config.broker.type,
-    supportsPaper: true,
+    supportsPaper: config.broker.type === "alpaca" || config.broker.type === "robinhood-chain",
     dynamicTools: false,
     shadowReadTools: {},
     connect: async () => undefined,
@@ -76,11 +138,11 @@ export function offlineAdapter(config: HaeloConfig): BrokerAdapter {
   };
 }
 
-/** Wire config, venue, state and audit log into a HaeloCore. Call `core.init()` before serving. */
-export async function createHaelo(loaded: LoadedConfig, opts: BuildOptions & { adapter?: BrokerAdapter; offline?: boolean } = {}): Promise<HaeloCore> {
+/** Wire config, adapter, state and audit log into a HaeloCore. Call `core.init()` before serving. */
+export function createHaelo(loaded: LoadedConfig, opts: BuildOptions & { adapter?: BrokerAdapter; offline?: boolean } = {}): HaeloCore {
   mkdirSync(loaded.stateDir, { recursive: true, mode: 0o700 });
   const now = opts.now ?? (() => new Date());
-  const adapter = opts.adapter ?? (opts.offline ? offlineAdapter(loaded.config) : await buildAdapter(loaded.config, loaded.stateDir, opts));
+  const adapter = opts.adapter ?? (opts.offline ? offlineAdapter(loaded.config) : buildAdapter(loaded.config, loaded.stateDir, opts));
   const storage = openStorage(loaded.config.storage.backend, loaded.stateDir, HaeloCore.initialStateFactory(loaded.config, now), now);
   return new HaeloCore({ config: loaded.config, adapter, store: storage.store, audit: storage.audit, now, onClose: storage.close });
 }

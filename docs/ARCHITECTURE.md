@@ -12,18 +12,18 @@ src/
   household.ts             account wall, concentration, wash-sale and lot checks
   injection.ts             tripwire rules, taint window
   state.ts, audit.ts       lock-dir JSON store; hash-chained JSONL log
-  adapters/                solana.ts (the venue), rest-base.ts (native tool set), http.ts
-  solana/                  rpc.ts (JSON-RPC reads + simulate), jupiter.ts (Swap API V2 order/execute),
-                           guard.ts (pre-sign simulation check), signer.ts (env, file or keychain key)
+  adapters/                alpaca, robinhood-crypto, mcp-upstream, rest-base, http
+  oauth.ts                 file-backed OAuth 2.1 PKCE provider for upstream MCP
+  testkit/mock-upstream.ts test double broker MCP server (assumed shapes!)
 ```
 
 ## One call, step by step (`HaeloCore.callTool`)
 
 1. `haelo_*` tools are handled locally (status, preflight, propose, explain, rationale, shadow report, request promotion).
-2. Refresh the tool list (dynamic adapters only; the Solana venue's tools are fixed), compare its hash with the pin. Drift → freeze orders, demote, and serve the *pinned* definitions.
+2. Refresh the upstream tool list (dynamic adapters only), compare its hash with the pin. Drift → freeze orders, demote, and serve the *pinned* definitions.
 3. Classify the tool: `read`, `order_place`, `order_cancel`, `transfer`, `unknown`. Transfer and unknown are blocked (and were never listed).
 4. **Read**: shadow rung returns the shadow ledger's account/positions/orders (so the agent's view is consistent with what it did); otherwise pass through. Text from third-party-text tools is scanned for injection; a hit opens a taint window and the result is wrapped with a warning.
-5. **Order**: extract an `OrderIntent` (fail closed). If the session is tainted, block and count a follow-through (demote per policy). Size it with a live quote. Run the pure policy evaluator for the rung's effective rails. Run household checks. Then route: `shadow` → virtual book at Jupiter prices, `paper` → real Jupiter route and on-chain simulation, unsigned, `propose` → create a proposal, `micro`/`standard` → guard, sign, Jupiter `/execute`.
+5. **Order**: extract an `OrderIntent` (fail closed). If the session is tainted, block and count a follow-through (demote per policy). Size it with a live quote. Run the pure policy evaluator for the rung's effective rails. Run household checks. Then route: `shadow` → simulate, `paper` → broker paper, `propose` → create a proposal, `micro`/`standard` → live.
 6. Every verdict is appended to the audit log with the canonical intent and reasons. Ladder stats update. Hard breaches demote immediately; drawdown is checked after accepted orders.
 
 ## Why these choices
@@ -39,8 +39,8 @@ src/
 
 - **Storage:** SQLite is the default, through Node's built-in `node:sqlite`, so there is no native dependency. JSONL/JSON is kept as an alternative and as the export format.
 - **Approvals:** the local web approval UI and the CLI are implemented. There is no Telegram bot.
-- **Venue:** Solana only. Swaps go through Jupiter Swap API V2. Paper has no separate account on Solana, so it means "real route, real simulation, nothing signed".
-- **Key storage:** the OS keychain is used, with a 0600 file fallback.
+- **Rungs:** the "standing orders" rung is dropped, because Robinhood Loops are not shipped.
+- **Tokens:** the OS keychain is used, with a 0600 file fallback.
 
 ## Storage and secrets
 

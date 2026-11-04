@@ -13,7 +13,7 @@ console.log(await client.callTool({ name: "haelo_status", arguments: {} }));
 console.log(
   await client.callTool({
     name: "place_order",
-    arguments: { symbol: "SOL/USDC", side: "buy", notional_usd: 25, rationale: "example" },
+    arguments: { symbol: "AAPL", side: "buy", notional_usd: 50, rationale: "example" },
   }),
 );
 await client.close();

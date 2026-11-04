@@ -13,8 +13,8 @@ export class BrokerError extends Error {
 }
 
 /**
- * What the gateway needs from a venue. The Solana venue implements it through RestAdapter with a small native
- * tool set. `dynamicTools` exists for venues whose tool list can change; those lists are pinned and drift demotes.
+ * What the gateway needs from a broker. Two shapes implement it: REST brokers (Alpaca, Robinhood Crypto API),
+ * which expose a small native tool set, and MCP upstreams, whose tools are passed through and classified.
  */
 export interface BrokerAdapter {
   readonly id: string;

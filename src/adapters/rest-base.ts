@@ -21,7 +21,7 @@ export const NATIVE_TOOLS: ToolDef[] = [
   },
   {
     name: "get_quote",
-    description: "Get the latest bid and ask for a pair from a live Jupiter route, for example SOL/USDC or JUP (quoted in USDC by default).",
+    description: "Get the latest bid and ask for a symbol (for example AAPL, BTC/USD or BTC-USD depending on broker).",
     inputSchema: { type: "object", properties: { symbol: { type: "string" } }, required: ["symbol"], additionalProperties: false },
     annotations: { readOnlyHint: true },
   },
@@ -34,7 +34,7 @@ export const NATIVE_TOOLS: ToolDef[] = [
   {
     name: "place_order",
     description:
-      "Swap on Solana through Jupiter. Orders are routed through the Haelo autonomy ladder: depending on the current rung they may be simulated, priced and dry-run without signing (paper), held for human approval, or signed and sent live under caps. A buy takes notional_usd (USDC to spend); a sell takes qty (tokens to sell).",
+      "Place an order. Orders are routed through the Haelo autonomy ladder: depending on the current rung they may be simulated, sent to a paper account, held for human approval, or sent live under caps. Give either qty or notional_usd, not both.",
     inputSchema: {
       type: "object",
       properties: {
@@ -46,7 +46,7 @@ export const NATIVE_TOOLS: ToolDef[] = [
         limit_price: { type: "number", exclusiveMinimum: 0 },
         time_in_force: { type: "string", enum: ["day", "gtc"] },
         slippage_bps: { type: "number", minimum: 0, description: "Max slippage in basis points. Refused when it exceeds rails.maxSlippageBps." },
-        confirm: { type: "boolean", description: "Required true to sign and send a live swap." },
+        confirm: { type: "boolean", description: "Required true to broadcast a live Robinhood Chain swap. Ignored by other brokers." },
         rationale: { type: "string", description: "Why you are placing this order. Stored in the audit log and shown to the human." },
       },
       required: ["symbol", "side"],
@@ -56,7 +56,7 @@ export const NATIVE_TOOLS: ToolDef[] = [
   },
   {
     name: "cancel_order",
-    description: "Cancel an open order by id. Jupiter swaps settle at once, so there is never one to cancel.",
+    description: "Cancel an open order by id.",
     inputSchema: { type: "object", properties: { order_id: { type: "string" } }, required: ["order_id"], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
   },
@@ -76,15 +76,11 @@ export function jsonResult(data: unknown, isError = false): ToolResult {
   };
 }
 
-/** What a concrete venue has to provide. */
+/** What a concrete REST broker has to provide. */
 export interface RestBroker {
   readonly id: string;
   readonly supportsPaper: boolean;
   readonly shadowReadTools?: { account?: string; positions?: string; orders?: string };
-  /** Check the venue before first use. */
-  connect?(): Promise<void>;
-  /** Canonical symbol, so policy allow-lists match however the agent spells the pair. */
-  normalizeSymbol?(symbol: string): string;
   getQuote(symbol: string): Promise<Quote>;
   getAccount(mode: BrokerMode): Promise<BrokerAccount>;
   getPositions(mode: BrokerMode): Promise<BrokerPosition[]>;
@@ -95,9 +91,9 @@ export interface RestBroker {
   householdView(mode: BrokerMode): Promise<HouseholdAccount[]>;
 }
 
-/** Wraps a venue with the native tool set so it satisfies BrokerAdapter. */
+/** Wraps a REST broker with the native tool set so it satisfies BrokerAdapter. */
 export class RestAdapter implements BrokerAdapter {
-  readonly dynamicTools: boolean = false;
+  readonly dynamicTools = false;
   readonly shadowReadTools = { account: "get_account", positions: "get_positions", orders: "list_orders" };
 
   constructor(private readonly broker: RestBroker) {}
@@ -110,7 +106,7 @@ export class RestAdapter implements BrokerAdapter {
   }
 
   async connect(): Promise<void> {
-    await this.broker.connect?.();
+    /* REST brokers are stateless; credentials are checked on first call. */
   }
   async close(): Promise<void> {
     /* nothing to release */
@@ -177,9 +173,6 @@ export class RestAdapter implements BrokerAdapter {
     if (typeof args["slippage_bps"] === "number") intent.slippageBps = args["slippage_bps"];
     intent.confirm = args["confirm"] === true;
     delete intent.stopPrice;
-    // Every Solana swap is a crypto trade, whatever the symbol looks like.
-    intent.assetClass = "crypto";
-    if (this.broker.normalizeSymbol) intent.symbol = this.broker.normalizeSymbol(intent.symbol);
     return intent;
   }
 

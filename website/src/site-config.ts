@@ -1,22 +1,21 @@
 import * as z from "zod/v4";
 
-export const DEFAULT_SOLANA_RPC = "https://api.mainnet-beta.solana.com";
+export const DEFAULT_REOWN_PROJECT_ID = "d55fd8ddbd81e9b400102b491e41a339";
 
 const siteConfigSchema = z.object({
   token: z.object({
     symbol: z.string().min(1).default("HAELO"),
     ca: z.string().default(""),
-    buyUrlTemplate: z.string().min(1).default("https://pump.fun/coin/{CA}"),
+    buyUrlTemplate: z.string().min(1).default("https://ponsfamily.com/launchpad/{CA}"),
   }),
   social: z.object({
     x: z.string().url().default("https://x.com/HaeloBot"),
   }),
-  /** RPC the browser uses to read token mints and simulate swaps. A keyed RPC with CORS enabled works best. */
-  solana: z
+  reown: z
     .object({
-      rpcUrl: z.string().url().default(DEFAULT_SOLANA_RPC),
+      projectId: z.string().min(1).default(DEFAULT_REOWN_PROJECT_ID),
     })
-    .default({ rpcUrl: DEFAULT_SOLANA_RPC }),
+    .default({ projectId: DEFAULT_REOWN_PROJECT_ID }),
 });
 
 export type SiteConfig = z.infer<typeof siteConfigSchema>;
@@ -25,10 +24,10 @@ export const FALLBACK_CONFIG: SiteConfig = {
   token: {
     symbol: "HAELO",
     ca: "",
-    buyUrlTemplate: "https://pump.fun/coin/{CA}",
+    buyUrlTemplate: "https://ponsfamily.com/launchpad/{CA}",
   },
   social: { x: "https://x.com/HaeloBot" },
-  solana: { rpcUrl: DEFAULT_SOLANA_RPC },
+  reown: { projectId: DEFAULT_REOWN_PROJECT_ID },
 };
 
 const PLACEHOLDER = /^(coming soon|ca coming soon|tbd|placeholder|todo|none|null)$/i;
@@ -39,8 +38,7 @@ export function isCaSet(ca: string): boolean {
   if (!trimmed) return false;
   if (PLACEHOLDER.test(trimmed)) return false;
   if (/^0x0+$/i.test(trimmed)) return false;
-  // A Solana mint is a base58 public key. Anything else is not a contract address on this chain.
-  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(trimmed);
+  return true;
 }
 
 export function truncateCa(ca: string): string {

@@ -1,56 +1,75 @@
 import { useEffect, useRef } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useAppKitAccount, useAppKitState } from "@reown/appkit/react";
 import { sound } from "../audio/sound.js";
+import { initAppKit, type WalletKit } from "../wallet/appkit.js";
 
-export function shortAddress(address: string): string {
+function shortAddress(address: string): string {
   if (address.length <= 12) return address;
-  return `${address.slice(0, 4)}…${address.slice(-4)}`;
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-/** Hide the decorative cursor while the wallet modal covers the page, so the native pointer stays usable. */
-function syncWalletCursor(open: boolean): void {
-  document.documentElement.classList.toggle("wallet-open", open);
+function syncAppKitCursor(open: boolean): void {
+  document.documentElement.classList.toggle("appkit-open", open);
 }
 
-export default function WalletButton(): React.ReactElement {
-  const { publicKey, connected, connecting, disconnect, wallet } = useWallet();
-  const { visible, setVisible } = useWalletModal();
-  const saw = useRef(false);
+/** Hide the decorative cursor while the wallet modal covers the page. */
+function AppKitCursor({ kit }: { kit: WalletKit }): null {
+  const { open } = useAppKitState();
 
   useEffect(() => {
-    syncWalletCursor(visible);
-    return () => document.documentElement.classList.remove("wallet-open");
-  }, [visible]);
+    syncAppKitCursor(open);
+  }, [open]);
+
+  useEffect(() => {
+    syncAppKitCursor(kit.appkit.getState().open);
+    const unsubscribe = kit.appkit.subscribeState((state) => {
+      syncAppKitCursor(state.open);
+    });
+    return () => {
+      unsubscribe();
+      document.documentElement.classList.remove("appkit-open");
+    };
+  }, [kit]);
+
+  return null;
+}
+
+function WalletReady({ kit }: { kit: WalletKit }): React.ReactElement {
+  const { address, isConnected } = useAppKitAccount();
+  const saw = useRef(false);
 
   useEffect(() => {
     if (!saw.current) {
       saw.current = true;
       return;
     }
-    if (connected) sound.levelUp();
-  }, [connected]);
+    if (isConnected) sound.levelUp();
+  }, [isConnected]);
 
-  if (connected && publicKey) {
-    const address = publicKey.toBase58();
+  if (isConnected && address) {
     return (
-      <button
-        className="wallet wallet-chip"
-        type="button"
-        aria-label={`Connected ${wallet?.adapter.name ?? "wallet"} ${shortAddress(address)}. Click to disconnect.`}
-        title="Disconnect"
-        onClick={() => void disconnect()}
-      >
-        <span className="wallet-halo" aria-hidden="true" />
-        {shortAddress(address)}
-      </button>
+      <>
+        <AppKitCursor kit={kit} />
+        <button className="wallet wallet-chip" type="button" aria-label={`Connected wallet ${shortAddress(address)}`} onClick={() => void kit.appkit.open()}>
+          <span className="wallet-halo" aria-hidden="true" />
+          {shortAddress(address)}
+        </button>
+      </>
     );
   }
 
   return (
-    <button className="wallet" type="button" aria-label="Connect a Solana wallet" disabled={connecting} onClick={() => setVisible(true)}>
-      <span className="wallet-long">{connecting ? "Connecting" : "Connect wallet"}</span>
-      <span className="wallet-short">{connecting ? "…" : "Connect"}</span>
-    </button>
+    <>
+      <AppKitCursor kit={kit} />
+      <button className="wallet" type="button" aria-label="Connect wallet" onClick={() => void kit.appkit.open()}>
+        <span className="wallet-long">Connect wallet</span>
+        <span className="wallet-short">Connect</span>
+      </button>
+    </>
   );
+}
+
+export default function WalletButton({ projectId }: { projectId: string }): React.ReactElement {
+  const kit = initAppKit(projectId);
+  return <WalletReady kit={kit} />;
 }

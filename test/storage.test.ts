@@ -9,7 +9,7 @@ import { StateStore } from "../src/state.js";
 import { openStorage } from "../src/storage/index.js";
 import { SqliteAuditLog, openDatabase } from "../src/storage/sqlite.js";
 
-const config = parseConfig(JSON.stringify({ version: 1, broker: { type: "solana" } }));
+const config = parseConfig(JSON.stringify({ version: 1, broker: { type: "alpaca" } }));
 const init = () => initialState(config, new Date("2026-11-04T00:00:00Z"));
 const dir = (): string => mkdtempSync(join(tmpdir(), "haelo-db-"));
 

@@ -14,12 +14,12 @@ export const railsSchema = z.object({
   /** Empty means any symbol that is not blocked. */
   allowSymbols: symbolList,
   blockSymbols: symbolList,
-  allowOrderTypes: z.array(z.enum(["market", "limit", "stop", "stop_limit"])).default(["market"]),
-  allowAssetClasses: z.array(z.enum(["equity", "crypto", "option"])).default(["crypto"]),
+  allowOrderTypes: z.array(z.enum(["market", "limit", "stop", "stop_limit"])).default(["market", "limit"]),
+  allowAssetClasses: z.array(z.enum(["equity", "crypto", "option"])).default(["equity", "crypto"]),
   allowShort: z.boolean().default(false),
   /** Largest single-symbol share of total equity after the order, in percent. */
   maxPositionPct: z.number().positive().max(100).default(100),
-  /** Largest slippage, in basis points, a swap may request. */
+  /** Largest slippage, in basis points, a Robinhood Chain swap may request. */
   maxSlippageBps: z.number().int().min(0).max(9_999).default(100),
 });
 
@@ -114,36 +114,64 @@ export const householdSchema = z.object({
   requireData: z.boolean().default(false),
 });
 
-const base58Key = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "a base58 Solana address");
-
-/** The only venue: spot swaps on Solana mainnet-beta through Jupiter. Secrets never live in this file. */
-export const brokerSchema = z.object({
-  type: z.literal("solana"),
-  /** Any mainnet-beta RPC. The public endpoint is rate limited; a private one is recommended for live use. */
-  rpcUrl: z.string().url().default("https://api.mainnet-beta.solana.com"),
-  /** Env var holding a custom RPC URL with an embedded key. Overrides rpcUrl when set. */
-  rpcUrlEnv: z.string().default("HAELO_RPC_URL"),
-  /** Jupiter Swap API V2 base URL. */
-  jupiterBaseUrl: z.string().url().default("https://api.jup.ag/swap/v2"),
-  /** Env var holding a Jupiter API key. Optional: without one the keyless tier is used. */
-  jupiterApiKeyEnv: z.string().default("HAELO_JUPITER_API_KEY"),
-  /** Base58 secret key or JSON byte array. */
-  privateKeyEnv: z.string().default("HAELO_PRIVATE_KEY"),
-  /** Path to a Solana CLI keypair file (id.json), chmod 600. */
-  keypairFileEnv: z.string().default("HAELO_KEYPAIR"),
-  /** Watch-only wallet for balances and paper simulation when no key is loaded. */
-  addressEnv: z.string().default("HAELO_ADDRESS"),
-  /** SOL kept back for fees when selling SOL. */
-  reserveSol: z.number().nonnegative().max(10).default(0.02),
-  /** Most SOL a swap may cost beyond the SOL it sells: network and priority fees, new token account rent. */
-  maxFeeSol: z.number().positive().max(1).default(0.01),
-  /** Paper orders also build and simulate the real transaction when a wallet address is known. */
-  paperSimulate: z.boolean().default(true),
-  /** Consecutive live send failures before an automatic drop to shadow. */
-  maxConsecutiveErrors: z.number().int().positive().default(3),
-  /** Extra SPL tokens, symbol to mint address. SOL, USDC, JUP and BONK are built in. */
-  tokens: z.record(z.string().min(1), base58Key).default({}),
-});
+export const brokerSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("alpaca"),
+    /** Env var names holding credentials. Secrets never live in this file. */
+    paperKeyIdEnv: z.string().default("ALPACA_PAPER_KEY_ID"),
+    paperSecretEnv: z.string().default("ALPACA_PAPER_SECRET_KEY"),
+    liveKeyIdEnv: z.string().default("ALPACA_LIVE_KEY_ID"),
+    liveSecretEnv: z.string().default("ALPACA_LIVE_SECRET_KEY"),
+    feed: z.enum(["iex", "sip", "delayed_sip"]).default("iex"),
+    paperBaseUrl: z.string().url().default("https://paper-api.alpaca.markets"),
+    liveBaseUrl: z.string().url().default("https://api.alpaca.markets"),
+    dataBaseUrl: z.string().url().default("https://data.alpaca.markets"),
+  }),
+  z.object({
+    type: z.literal("robinhood-chain"),
+    network: z.literal("mainnet").default("mainnet"),
+    /** Public RPC. The default is Robinhood's documented mainnet endpoint. */
+    rpcUrl: z.string().url().default("https://rpc.mainnet.chain.robinhood.com"),
+    privateKeyEnv: z.string().default("HAELO_PRIVATE_KEY"),
+    keystoreEnv: z.string().default("HAELO_KEYSTORE"),
+    addressEnv: z.string().default("HAELO_ADDRESS"),
+    deadlineSeconds: z.number().int().positive().max(3600).default(120),
+    /** Consecutive live send failures before an automatic drop to shadow. */
+    maxConsecutiveErrors: z.number().int().positive().default(3),
+    /** Extra ERC-20s, symbol to address. WETH and USDG are built in. */
+    tokens: z.record(z.string().min(1), z.string().regex(/^0x[0-9a-fA-F]{40}$/)).default({}),
+  }),
+  z.object({
+    type: z.literal("robinhood-crypto"),
+    apiKeyEnv: z.string().default("RH_CRYPTO_API_KEY"),
+    /** Base64 Ed25519 private key seed (32 bytes). */
+    privateKeyEnv: z.string().default("RH_CRYPTO_PRIVATE_KEY"),
+    apiVersion: z.enum(["v1", "v2"]).default("v1"),
+    baseUrl: z.string().url().default("https://trading.robinhood.com"),
+  }),
+  z.object({
+    type: z.literal("mcp-upstream"),
+    /** Upstream MCP server. Exactly one of url or command. */
+    url: z.string().url().optional(),
+    command: z.string().optional(),
+    args: z.array(z.string()).default([]),
+    /** Env var holding a static bearer token (for dev or mock servers). If unset, OAuth is used for URLs. */
+    bearerTokenEnv: z.string().optional(),
+    /** Env var names passed to a stdio upstream. */
+    passEnv: z.array(z.string()).default([]),
+    /** Optional explicit tool names, since upstream argument shapes are not always documented. */
+    quoteTools: z.object({ equity: z.string().optional(), crypto: z.string().optional() }).default({}),
+    accountTool: z.string().optional(),
+    positionsTool: z.string().optional(),
+    ordersTool: z.string().optional(),
+    taxLotsTool: z.string().optional(),
+    cancelAllTool: z.string().optional(),
+    /** OAuth loopback port for `haelo auth`. */
+    oauthPort: z.number().int().min(1024).max(65535).default(8765),
+    /** Per-tool effect overrides, e.g. { "place_equity_order": "order_place" }. */
+    toolOverrides: z.record(z.string(), z.enum(["read", "order_place", "order_cancel", "transfer", "blocked"])).default({}),
+  }),
+]);
 
 export const configSchema = z.object({
   version: z.literal(1),
@@ -155,7 +183,7 @@ export const configSchema = z.object({
   live: z.object({ enabled: z.boolean().default(false) }).default({ enabled: false }),
   /** Where state and the audit chain live. `sqlite` = <stateDir>/haelo.db (WAL, append-only triggers); `jsonl` = state.json + audit.jsonl. */
   storage: z.object({ backend: z.enum(["sqlite", "jsonl"]).default("sqlite") }).default({ backend: "sqlite" }),
-  /** Where `haelo key import` keeps the signing key. `auto` = OS keychain when available, else a 0600 file. */
+  /** Where OAuth tokens are kept. `auto` = OS keychain when available, else a 0600 file. */
   secrets: z.object({ store: z.enum(["auto", "keychain", "file"]).default("auto") }).default({ store: "auto" }),
   broker: brokerSchema,
   agent: z

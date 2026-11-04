@@ -1,15 +1,16 @@
 # Going live: checklist
 
-Haelo ships with **live trading disabled** (`live.enabled: false`). While it is off, nothing is ever signed: `micro`/`standard` cannot be the starting rung, cannot be promoted into (not even with `--force`), and approved proposals are refused. Turning it on is a deliberate, policy-locked edit.
+Haelo ships with **live trading disabled** (`live.enabled: false`). With it off, nothing can reach a live account: `micro`/`standard` cannot be configured as the starting rung, cannot be promoted into (not even with `--force`), and approved proposals are refused. Turning it on is a deliberate, policy-locked edit.
 
 Work through this list in order. Do not skip steps because an earlier rung "looked fine".
 
-## 0. Wallet (you)
+## 0. Accounts and keys (you)
 
-- [ ] Create a **dedicated Solana wallet** for the agent (`solana-keygen new -o agent.json`, or a fresh Phantom account). Never use your main wallet.
-- [ ] Fund it with only what you can afford to lose: a little SOL for fees (at least `reserveSol + maxFeeSol`, 0.03 SOL by default) and some USDC.
-- [ ] Import the key on the machine that runs Haelo: `chmod 600 agent.json && haelo key import --file agent.json`, then delete or lock away the file.
-- [ ] Get a private RPC URL and set `HAELO_RPC_URL`. The public endpoint is rate limited.
+- [ ] Use a **dedicated brokerage account** for the agent, funded with an amount you can afford to lose entirely.
+- [ ] Alpaca: create paper keys first; create live keys only when you reach step 5. Never give the agent's host your main account.
+- [ ] Robinhood Crypto API (US only): create an API credential with an Ed25519 key pair; keep the private seed out of any file the agent can read.
+- [ ] Robinhood agentic MCP: sign in with `haelo auth` on the machine that runs Haelo.
+- [ ] Turn off withdrawals / transfers for the API credential at the broker if the broker allows it.
 
 ## 1. Isolate Haelo from the agent
 
@@ -19,14 +20,14 @@ Work through this list in order. Do not skip steps because an earlier rung "look
 
 ## 2. Policy
 
-- [ ] Review `haelo.yaml`: rails, `rungs.micro` caps (default $25 an order, $100 a day, `SOL/USDC` only), `maxSlippageBps`, `agent.accountId` set to the agent wallet's address, criteria per rung, drawdown limit.
+- [ ] Review `haelo.yaml`: rails, `rungs.micro` caps (default $25/order, $100/day), `agent.accountId` (account wall), criteria per rung, drawdown limit.
 - [ ] `haelo policy lock`. From now on `serve` refuses to start if the file changes.
 
 ## 3. Preflight
 
 ```bash
-haelo quote SOL/USDC    # Jupiter and the RPC answer
-haelo doctor            # config, lock, storage, audit chain, key, cluster, mints, balances (read-only)
+haelo doctor            # config, lock, storage, audit chain, secret store, credentials, connectivity (read-only)
+npm run smoke:alpaca    # optional: real paper order placed far from market and cancelled
 ```
 
 Every `FAIL` must be fixed. Read every `WARN`.
@@ -34,23 +35,30 @@ Every `FAIL` must be fixed. Read every `WARN`.
 ## 4. Earn it: shadow → paper → propose
 
 - [ ] Run at `shadow` for at least the configured minimum days and decisions. `haelo report` shows the scorecard.
-- [ ] `haelo promote` to `paper`. Check that paper fills show `onchainSimulation: { ok: true }`: the real transactions would have landed.
-- [ ] `haelo promote` to `propose`. Approve swaps yourself with `haelo approve <id>` or the web UI (`haelo approvals-ui`). Read every card.
+- [ ] `haelo promote` (Alpaca: to `paper`; Robinhood: to `propose`). Repeat at `paper`.
+- [ ] At `propose`, approve orders yourself with `haelo approve <id>` or the web UI (`haelo approvals-ui`). Read every card.
 - [ ] Read the audit log: `haelo audit tail -n 100`. Anchor `haelo status`'s audit head hash somewhere else (a note, a commit).
 
 ## 5. Opt in to live
 
+- [ ] Set live credentials in the environment (`ALPACA_LIVE_KEY_ID`, `ALPACA_LIVE_SECRET_KEY`).
 - [ ] Edit `haelo.yaml`: `live: { enabled: true }`. Then `haelo policy lock`.
-- [ ] `haelo doctor --live` passes with no `FAIL`: key loaded, enough SOL for fees, account wall matches, policy locked.
-- [ ] Note: even at `propose`, approvals now **sign and send** swaps. The agent must also pass `confirm: true` on each order.
+- [ ] `haelo doctor --live` passes with no `FAIL`: live account ACTIVE and not blocked, live key is not a paper key, account wall matches, policy locked.
+- [ ] Note: even at `propose`, approvals now send **live** orders.
 
 ## 6. Micro, then standard
 
-- [ ] Make your first live swap tiny and check it on Solscan (the link is in the order result and the audit log).
 - [ ] `haelo promote` to `micro` only when the criteria are met (the report says so). Watch the first days closely.
 - [ ] Keep `ladder.autoPromote.maxRung` at `propose` or lower.
-- [ ] Know your stop button: `haelo panic` drops to `shadow` at once. Swaps settle immediately, so there is nothing resting to cancel.
+- [ ] Know your stop button: `haelo panic` drops to `shadow` and cancels open orders.
 
 ## What "verified" means here
 
-See [SOLANA.md](SOLANA.md#what-has-been-verified). In short: every path is tested against a local fake cluster that uses real Solana transactions and signatures, and the API shapes follow Jupiter's and Solana's published specs. Nothing has been sent to mainnet by the author. You are the first live test. Start small.
+| Path | Verified how |
+|---|---|
+| Alpaca | Against a local mock of the documented API. `haelo doctor` and `npm run smoke:alpaca` verify it against the real API with **your** keys. |
+| Robinhood Crypto API | Signing verified against the official documentation vector; endpoints against a mock. `haelo doctor` / `npm run smoke:robinhood-crypto` make real signed GETs with your keys. |
+| Robinhood agentic MCP | OAuth 2.1 + PKCE flow verified against a local spec-compliant mock IdP; tool schemas are undocumented, so stay at `propose` until you have read real responses in the audit log. |
+| Robinhood Chain Uniswap v3 | Router and quoter addresses come from Uniswap's chain 4663 deployment list and were read back on the public RPC (factory and WETH match). Quotes are on-chain. A live swap still needs your key, `live.enabled`, and `confirm: true`. Testnet has no published Uniswap router, so no testnet swap has been sent. See [CHAIN.md](CHAIN.md). |
+
+Nothing here has been run against a real broker account by the author. You are the first live test. Start small.

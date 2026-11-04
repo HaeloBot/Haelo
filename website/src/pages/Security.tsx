@@ -19,7 +19,7 @@ export default function Security(): React.ReactElement {
         <br />
         <span className="lime">agent is hostile.</span>
       </h1>
-      <p className="lede">Haelo exists because an agent with a wallet key can be wrong, manipulated, or compromised. These are the controls, and the holes next to them.</p>
+      <p className="lede">Haelo exists because an agent with a brokerage login can be wrong, manipulated, or compromised. These are the controls, and the holes next to them.</p>
       <div className="card-grid">
         {ROWS.map((row) => (
           <article key={row.t} className="card">
@@ -36,7 +36,7 @@ export default function Security(): React.ReactElement {
         </p>
         <h2>Keys</h2>
         <p>
-          The CLI keeps the signing key in the OS keychain (a <code>0600</code> file fallback), or reads it from the environment. It is never written to the policy, the audit log, or this website. Before signing, every live swap is simulated against the RPC and refused if the wallet would lose more than the order allows. The playground has no field for a private key: a live swap here is signed by your own wallet after the policy gate. <code>live.enabled</code> defaults to false, and while it is false nothing is signed.
+          Broker credentials come from environment variables. They are not written to the policy, the audit log, or this website. The playground has no field for a private key. A live Robinhood Chain swap is signed by the connected wallet after the policy gate. OAuth tokens prefer the OS keychain, with a <code>0600</code> file fallback. <code>live.enabled</code> defaults to false, and while it is false no code path sends a live order.
         </p>
         <p>
           Report a vulnerability in private on the GitHub security tab. Do not open a public issue. The full note is <code>SECURITY.md</code> in the repository.

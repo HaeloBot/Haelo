@@ -4,9 +4,9 @@ import { evaluateOrder, effectiveRails, type UsageSnapshot } from "../src/policy
 import { parseConfig } from "../src/policy/load.js";
 import type { OrderIntent, Rung } from "../src/types.js";
 
-const cfg = (extra: Record<string, unknown> = {}) => parseConfig(JSON.stringify({ version: 1, broker: { type: "solana" }, ...extra }));
+const cfg = (extra: Record<string, unknown> = {}) => parseConfig(JSON.stringify({ version: 1, broker: { type: "alpaca" }, ...extra }));
 const usage = (u: Partial<UsageSnapshot> = {}): UsageSnapshot => ({ ordersToday: 0, notionalToday: 0, recentOrderTimes: [], lastOrderBySymbol: {}, ...u });
-const buy = (o: Partial<OrderIntent> = {}): OrderIntent => ({ symbol: "SOL/USDC", side: "buy", type: "market", assetClass: "crypto", ...o });
+const buy = (o: Partial<OrderIntent> = {}): OrderIntent => ({ symbol: "AAPL", side: "buy", type: "market", assetClass: "equity", ...o });
 const NOW = 1_000_000_000_000;
 
 describe("evaluateOrder", () => {
@@ -27,15 +27,15 @@ describe("evaluateOrder", () => {
   });
 
   it("enforces block and allow lists case-insensitively", () => {
-    const c = cfg({ rails: { blockSymbols: ["bonk/usdc"], allowSymbols: ["SOL/USDC", "bonk/usdc", "JUP/USDC"] } });
-    expect(evaluateOrder({ config: c, rung: "standard", intent: buy({ symbol: "BONK/USDC" }), notionalUsd: 10, usage: usage(), nowMs: NOW }).violations.map((v) => v.code)).toContain("symbol_blocked");
-    expect(evaluateOrder({ config: c, rung: "standard", intent: buy({ symbol: "WIF/USDC" }), notionalUsd: 10, usage: usage(), nowMs: NOW }).violations.map((v) => v.code)).toContain("symbol_not_allowed");
-    expect(evaluateOrder({ config: c, rung: "standard", intent: buy({ symbol: "jup/usdc" }), notionalUsd: 10, usage: usage(), nowMs: NOW }).verdict).toBe("allow");
+    const c = cfg({ rails: { blockSymbols: ["gme"], allowSymbols: ["AAPL", "gme", "MSFT"] } });
+    expect(evaluateOrder({ config: c, rung: "standard", intent: buy({ symbol: "GME" }), notionalUsd: 10, usage: usage(), nowMs: NOW }).violations.map((v) => v.code)).toContain("symbol_blocked");
+    expect(evaluateOrder({ config: c, rung: "standard", intent: buy({ symbol: "TSLA" }), notionalUsd: 10, usage: usage(), nowMs: NOW }).violations.map((v) => v.code)).toContain("symbol_not_allowed");
+    expect(evaluateOrder({ config: c, rung: "standard", intent: buy({ symbol: "msft" }), notionalUsd: 10, usage: usage(), nowMs: NOW }).verdict).toBe("allow");
   });
 
   it("rate limits and cools down per symbol", () => {
     const c = cfg({ rails: { maxOrdersPerMinute: 2, symbolCooldownSeconds: 30 } });
-    const recent = usage({ recentOrderTimes: [NOW - 5000, NOW - 10_000], lastOrderBySymbol: { "SOL/USDC": NOW - 10_000 } });
+    const recent = usage({ recentOrderTimes: [NOW - 5000, NOW - 10_000], lastOrderBySymbol: { AAPL: NOW - 10_000 } });
     const codes = evaluateOrder({ config: c, rung: "standard", intent: buy(), notionalUsd: 10, usage: recent, nowMs: NOW }).violations.map((v) => v.code);
     expect(codes).toContain("rate_limit");
     expect(codes).toContain("symbol_cooldown");
@@ -66,8 +66,8 @@ describe("evaluateOrder", () => {
   });
 
   it("micro allowlist is intersected with the global allowlist", () => {
-    const c = cfg({ rails: { allowSymbols: ["SOL/USDC", "JUP/USDC"] }, rungs: { micro: { allowSymbols: ["JUP/USDC", "WIF/USDC"] } } });
-    expect(effectiveRails(c, "micro").allowSymbols).toEqual(["JUP/USDC"]);
+    const c = cfg({ rails: { allowSymbols: ["AAPL", "MSFT"] }, rungs: { micro: { allowSymbols: ["MSFT", "TSLA"] } } });
+    expect(effectiveRails(c, "micro").allowSymbols).toEqual(["MSFT"]);
   });
 });
 
@@ -115,11 +115,10 @@ describe("property tests", () => {
 describe("config validation", () => {
   it("rejects unknown broker types and bad numbers with readable errors", () => {
     expect(() => parseConfig("version: 1\nbroker: { type: nope }")).toThrow(/Invalid haelo config/);
-    expect(() => parseConfig(JSON.stringify({ version: 1, broker: { type: "solana" }, rails: { maxOrderUsd: -1 } }))).toThrow(/maxOrderUsd/);
+    expect(() => parseConfig(JSON.stringify({ version: 1, broker: { type: "alpaca" }, rails: { maxOrderUsd: -1 } }))).toThrow(/maxOrderUsd/);
   });
-  it("accepts only the Solana venue, with base58 token mints", () => {
-    expect(() => parseConfig("version: 1\nbroker: { type: alpaca }")).toThrow(/solana/);
-    expect(() => parseConfig("version: 1\nbroker: { type: solana, tokens: { BAD: '0xabc' } }")).toThrow(/base58/);
-    expect(parseConfig("version: 1\nbroker: { type: solana, tokens: { WIF: EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm } }").broker.tokens["WIF"]).toBeDefined();
+  it("requires exactly one of url or command for an upstream", () => {
+    expect(() => parseConfig("version: 1\nbroker: { type: mcp-upstream }")).toThrow(/url.*command/);
+    expect(() => parseConfig("version: 1\nbroker: { type: mcp-upstream, url: 'http://x.test', command: node }")).toThrow(/only one/);
   });
 });

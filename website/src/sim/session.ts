@@ -26,7 +26,7 @@ import type { HouseholdAccount, OrderIntent, Quote, Rung, Side } from "../../../
 import { rungIndex } from "../../../src/types.js";
 import type { PersistedState, Proposal } from "../../../src/state.js";
 import { isoDay, round } from "../../../src/util.js";
-import { normalizePair, offlineQuotes } from "./quotes.js";
+import { offlineQuotes } from "./quotes.js";
 
 export interface TapeItem {
   id: number;
@@ -102,13 +102,14 @@ export function sampleHousehold(now: Date): HouseholdAccount[] {
       fills: [],
     },
     {
-      id: "cold-wallet",
-      label: "Cold wallet",
+      id: "taxable-joint",
+      label: "Taxable",
       isAgentAccount: false,
       equity: 20_000,
-      positions: [{ symbol: "JUP/USDC", qty: 18_000, avgEntryPrice: 0.45, marketValue: 9_000, assetClass: "crypto" }],
+      positions: [{ symbol: "AAPL", qty: 10, avgEntryPrice: 200, marketValue: 1800, assetClass: "equity" }],
       fills: [
-        { symbol: "JUP/USDC", side: "buy", qty: 18_000, price: 0.45, ts: daysAgo(now, 12), assetClass: "crypto" },
+        { symbol: "AAPL", side: "buy", qty: 10, price: 200, ts: daysAgo(now, 12), assetClass: "equity" },
+        { symbol: "AAPL", side: "sell", qty: 4, price: 150, ts: daysAgo(now, 4), assetClass: "equity" },
       ],
     },
   ];
@@ -163,7 +164,7 @@ export class PlaygroundSession {
 
   recordBroadcast(input: { hash?: string; detail: string; ok: boolean; symbol: string; notionalUsd: number }): void {
     this.append(input.ok ? "live_order" : "wallet_result", {
-      ...(input.hash ? { txHash: input.hash, explorer: `https://solscan.io/tx/${input.hash}` } : {}),
+      ...(input.hash ? { txHash: input.hash, explorer: `https://robinhoodchain.blockscout.com/tx/${input.hash}` } : {}),
       detail: input.detail,
       ok: input.ok,
       symbol: input.symbol,
@@ -266,13 +267,13 @@ export class PlaygroundSession {
 
   placeOrder(req: OrderRequest): StepResult {
     this.taint.callsSince += 1;
-    const symbol = normalizePair(req.symbol);
+    const symbol = req.symbol.trim().toUpperCase();
     const intent: OrderIntent = {
       symbol,
       side: req.side,
       type: "market",
       notionalUsd: req.notionalUsd,
-      assetClass: "crypto",
+      assetClass: symbol.includes("-") || symbol.includes("/") ? "crypto" : "equity",
     };
     const quote = this.quotes[symbol];
     const usage = this.usageSnapshot();
@@ -373,7 +374,7 @@ export class PlaygroundSession {
       const result = this.finish(
         "info",
         "Policy passed",
-        "The connected Solana wallet can sign this swap. Nothing is sent until you approve it in the wallet.",
+        "The connected wallet can sign this Robinhood Chain swap. Nothing is broadcast until you approve it.",
         checks,
         [],
         undefined,
@@ -415,7 +416,7 @@ export class PlaygroundSession {
     const dd = this.checkDrawdown();
     const auto = dd.moved ? undefined : this.maybeAutoPromote();
     const moved = dd.moved ?? auto;
-    const pxLabel = filled.order.filledAvgPrice !== undefined ? filled.order.filledAvgPrice.toPrecision(6).replace(/\.?0+$/, "") : "?";
+    const pxLabel = filled.order.filledAvgPrice?.toFixed(2) ?? "?";
     const detail = standIn
       ? `Paper quote fill ${filled.order.filledQty.toFixed(6)} ${symbol} @ ${pxLabel}. Not signed. Nothing was broadcast.`
       : `Shadow fill ${filled.order.filledQty.toFixed(6)} ${symbol} @ ${pxLabel}. Nothing was signed.`;
@@ -494,7 +495,7 @@ export class PlaygroundSession {
 
   /** Crash or lift a mark, then run the same drawdown check the gateway runs after a fill. */
   remark(symbol: string, mid: number): StepResult {
-    const sym = normalizePair(symbol);
+    const sym = symbol.trim().toUpperCase();
     const prev = this.quotes[sym]?.mid;
     this.quotes[sym] = {
       symbol: sym,
@@ -503,7 +504,7 @@ export class PlaygroundSession {
       mid,
       ts: this.now.toISOString(),
     };
-    this.append("mark", { symbol: sym, mid, previous: prev, note: "Playground mark. At shadow the CLI uses Jupiter quotes the same way." });
+    this.append("mark", { symbol: sym, mid, previous: prev, note: "Playground mark. At shadow the CLI uses broker quotes the same way." });
     const dd = this.checkDrawdown();
     return this.finish(
       dd.moved ? "bad" : "info",
