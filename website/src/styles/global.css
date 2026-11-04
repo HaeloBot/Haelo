@@ -131,6 +131,22 @@ a:hover { color: white; }
   font-weight: 700;
 }
 .sound[aria-pressed="true"] { background: var(--lime); color: #111; }
+.sound.waiting { animation: sound-pulse 1.15s ease-out infinite; }
+@keyframes sound-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(204, 255, 0, 0.65); }
+  100% { box-shadow: 0 0 0 12px rgba(204, 255, 0, 0); }
+}
+.x-link {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--lime);
+  color: var(--lime);
+  display: inline-grid;
+  place-items: center;
+  text-decoration: none;
+}
+.x-link:hover { background: var(--lime); color: #111; }
 .eq { display: flex; align-items: flex-end; gap: 2px; height: 14px; width: 16px; }
 .eq i {
   display: block;
@@ -542,9 +558,54 @@ html.shake-up, html.shake-down { animation: shake 0.48s linear; }
   .stage-copy h1 { font-size: clamp(52px, 16vw, 84px); }
 }
 
+.token-hero {
+  position: relative;
+  min-height: calc(100vh - var(--nav));
+  display: grid;
+  align-items: end;
+}
+.token-stage { position: absolute; inset: 0; }
+.token-stage canvas { width: 100%; height: 100%; }
+.token-copy {
+  position: relative;
+  z-index: 1;
+  padding: 48px 28px 64px;
+  background: linear-gradient(180deg, rgba(5, 6, 5, 0) 0%, rgba(5, 6, 5, 0.88) 55%);
+}
+.token-copy h1 { font-size: clamp(72px, 14vw, 168px); }
+.token-about { padding-top: 24px; }
+.token-disclaimer {
+  border: 1px solid rgba(255, 59, 92, 0.55);
+  border-radius: 14px;
+  padding: 14px 16px;
+  color: #ffd0d8;
+}
+.ca-card {
+  margin-top: 28px;
+  padding: 22px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: #080a07;
+  max-width: 720px;
+}
+.ca-card.copied { border-color: var(--lime); box-shadow: 0 0 32px rgba(204, 255, 0, 0.25); }
+.ca-big {
+  font-family: var(--display);
+  font-size: clamp(32px, 5vw, 64px);
+  letter-spacing: -0.04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+.ca-full {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .grain { animation: none; }
-  .glitch::before, .glitch::after, .halo-ring, .eq i, html.shake-up, html.shake-down { animation: none; }
+  .glitch::before, .glitch::after, .halo-ring, .eq i, html.shake-up, html.shake-down, .sound.waiting { animation: none; }
   .card, .btn, .rung { transition: none; }
   .card:hover, .btn:hover, .rung.on { transform: none; }
 }
