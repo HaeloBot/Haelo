@@ -7,7 +7,7 @@ const FAQ = [
   },
   {
     q: "Does the playground trade?",
-    a: "No. It runs the real policy, ladder, household, injection, and audit modules in shadow. It has no broker client and nowhere to put a key. Live orders are refused here even if a policy would allow them.",
+    a: "Shadow and paper quote Uniswap v3 on Robinhood Chain and do not sign. A live rung, after you opt in and tick the real-funds box, asks the connected wallet to sign. The page never asks for a private key.",
   },
   {
     q: "Why is demotion automatic and promotion human?",

@@ -7,11 +7,12 @@
  * `verifyEntries`). Nothing here reimplements those rules.
  *
  * What the browser will not do, on purpose:
- * - read or store a broker key
- * - open a socket to a broker
- * - treat a paper or live rung as a real order. Paper fills stay in the shadow ledger
- *   and are labelled as stand-ins. Live rungs are refused, matching `live.enabled: false`,
- *   and stay refused even if you opt in. The CLI is the only place an order can leave.
+ * - read or store a private key
+ * - sign a swap itself
+ *
+ * Shadow and paper fill against quotes in this process and do not broadcast.
+ * A live rung that passes policy returns readyForWallet. The page then asks the
+ * connected wallet to sign. live.enabled false still refuses the send.
  */
 import { nextEntry, verifyEntries, type AuditEntry, type VerifyResult } from "../../../src/audit.js";
 import { householdChecks, type PreflightCheck } from "../../../src/household.js";
@@ -50,6 +51,8 @@ export interface StepResult {
   moved?: RungMove;
   checks: PreflightCheck[];
   violations: Violation[];
+  /** Policy passed on a live rung. The page may open the wallet. Nothing has been broadcast. */
+  readyForWallet?: boolean;
 }
 
 export interface OrderRequest {
@@ -150,6 +153,34 @@ export class PlaygroundSession {
     this.touch();
   }
 
+  /** Replace the in-memory chain with a previously verified log. */
+  adoptAudit(entries: AuditEntry[]): boolean {
+    const verdict = verifyEntries(entries);
+    if (!verdict.ok || entries.length === 0) return false;
+    this.audit.splice(0, this.audit.length, ...entries.map((e) => ({ ...e, data: { ...e.data } })));
+    this.touch();
+    return true;
+  }
+
+  recordBroadcast(input: { hash?: string; detail: string; ok: boolean; symbol: string; notionalUsd: number }): void {
+    this.append(input.ok ? "live_order" : "wallet_result", {
+      ...(input.hash ? { txHash: input.hash, explorer: `https://robinhoodchain.blockscout.com/tx/${input.hash}` } : {}),
+      detail: input.detail,
+      ok: input.ok,
+      symbol: input.symbol,
+    });
+    if (input.ok) {
+      this.state.ladder.stats.decisions += 1;
+      this.state.ladder.stats.accepted += 1;
+      this.bumpUsage(input.symbol, input.notionalUsd);
+    }
+    this.touch();
+  }
+
+  exportAudit(): string {
+    return JSON.stringify(this.audit, null, 2);
+  }
+
   snapshot(): SessionSnapshot {
     const marks = this.marks();
     const ledger = new ShadowLedger(this.state.shadow, this.config.shadow, () => this.now);
@@ -193,7 +224,7 @@ export class PlaygroundSession {
         name: "live_enabled",
         ok,
         detail: ok
-          ? "live.enabled is true in this policy. The browser still will not send an order."
+          ? "live.enabled is true. A live rung asks the connected wallet to sign. This page never asks for a private key."
           : "live.enabled is false in the policy; live rungs are locked, even with force.",
       });
       if (!ok) report.eligible = false;
@@ -242,7 +273,7 @@ export class PlaygroundSession {
       side: req.side,
       type: "market",
       notionalUsd: req.notionalUsd,
-      assetClass: symbol.includes("-") ? "crypto" : "equity",
+      assetClass: symbol.includes("-") || symbol.includes("/") ? "crypto" : "equity",
     };
     const quote = this.quotes[symbol];
     const usage = this.usageSnapshot();
@@ -323,19 +354,33 @@ export class PlaygroundSession {
       return this.holdProposal(intent, req.notionalUsd, checks);
     }
     if (rung === "micro" || rung === "standard") {
+      if (!this.config.live.enabled) {
+        this.append("decision", {
+          verdict: "block",
+          reason: "live trading is disabled (live.enabled: false)",
+          symbol,
+          notionalUsd: req.notionalUsd,
+          rung,
+        });
+        return this.finish("warn", "Live send refused", "Live trading is disabled in the policy (live.enabled: false). Nothing was sent.", checks, [], undefined);
+      }
       this.append("decision", {
-        verdict: "block",
-        reason: this.config.live.enabled
-          ? "browser playground never transmits live orders"
-          : "live trading is disabled (live.enabled: false)",
+        verdict: "awaiting_signature",
         symbol,
+        side: req.side,
         notionalUsd: req.notionalUsd,
         rung,
       });
-      const detail = this.config.live.enabled
-        ? "The policy would allow a live send. This page refuses it. Run haelo on your machine if you have opted in."
-        : "Live trading is disabled in the policy (live.enabled: false). Nothing was sent.";
-      return this.finish("warn", "Live send refused", detail, checks, [], undefined);
+      const result = this.finish(
+        "info",
+        "Policy passed",
+        "The connected wallet can sign this Robinhood Chain swap. Nothing is broadcast until you approve it.",
+        checks,
+        [],
+        undefined,
+      );
+      result.readyForWallet = true;
+      return result;
     }
 
     if (!quote || !px) {
@@ -358,7 +403,7 @@ export class PlaygroundSession {
     this.bumpUsage(symbol, req.notionalUsd);
     const standIn = rung === "paper";
     this.append("decision", {
-      verdict: standIn ? "paper_stand_in" : "shadow_fill",
+      verdict: standIn ? "paper_quote" : "shadow_fill",
       symbol,
       side: req.side,
       qty: filled.order.filledQty,
@@ -366,17 +411,17 @@ export class PlaygroundSession {
       notionalUsd: req.notionalUsd,
       rung,
       simulated: true,
-      ...(standIn ? { note: "Browser has no broker. Paper-rung fills stay in the shadow ledger. The CLI would send this to paper." } : {}),
+      ...(standIn ? { note: "Paper quote fill. Not signed. Nothing was broadcast." } : {}),
     });
     const dd = this.checkDrawdown();
     const auto = dd.moved ? undefined : this.maybeAutoPromote();
     const moved = dd.moved ?? auto;
     const pxLabel = filled.order.filledAvgPrice?.toFixed(2) ?? "?";
     const detail = standIn
-      ? `Stand-in fill ${filled.order.filledQty.toFixed(6)} ${symbol} @ ${pxLabel}. A real paper rung would have hit the broker.`
-      : `Shadow fill ${filled.order.filledQty.toFixed(6)} ${symbol} @ ${pxLabel}. Nothing left this browser.`;
+      ? `Paper quote fill ${filled.order.filledQty.toFixed(6)} ${symbol} @ ${pxLabel}. Not signed. Nothing was broadcast.`
+      : `Shadow fill ${filled.order.filledQty.toFixed(6)} ${symbol} @ ${pxLabel}. Nothing was signed.`;
     const extra = moved ? ` Then ${moved.direction === "down" ? "demoted" : "promoted"} to ${moved.to}.` : "";
-    return this.finish(moved?.direction === "down" ? "bad" : "ok", standIn ? "Paper stand-in" : "Shadow fill", detail + extra, checks, [], moved);
+    return this.finish(moved?.direction === "down" ? "bad" : "ok", standIn ? "Paper quote" : "Shadow fill", detail + extra, checks, [], moved);
   }
 
   promote(force = false): StepResult {

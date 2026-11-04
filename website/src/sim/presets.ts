@@ -13,7 +13,7 @@ rails:
   maxDailyUsd: 2000
   maxOrdersPerDay: 20
   maxOrdersPerMinute: 6
-  allowSymbols: [BTC-USD, ETH-USD, SOL-USD]
+  allowSymbols: [BTC-USD, ETH-USD, SOL-USD, WETH/USDG]
   blockSymbols: []
   allowOrderTypes: [market, limit]
   allowAssetClasses: [crypto]
@@ -156,8 +156,31 @@ export interface PolicyPreset {
   yaml: string;
 }
 
+export const LIVE_CHAIN_YAML = `# Live Robinhood Chain. The wallet signs. This page never sees a private key.
+version: 1
+stateDir: ~/.haelo
+broker:
+  type: robinhood-chain
+live:
+  enabled: true
+rails:
+  maxOrderUsd: 100
+  maxDailyUsd: 200
+  maxOrdersPerDay: 10
+  maxSlippageBps: 100
+  allowSymbols: [WETH/USDG]
+  allowOrderTypes: [market]
+  allowAssetClasses: [crypto]
+  allowShort: false
+ladder:
+  start: micro
+household:
+  enabled: false
+`;
+
 export const PRESETS: PolicyPreset[] = [
-  { id: "demo", label: "Demo ladder", blurb: "Climbs in a few good orders. Live still locked.", yaml: DEMO_YAML },
+  { id: "short", label: "Short ladder", blurb: "Climbs in a few good orders. Live stays locked until you opt in.", yaml: DEMO_YAML },
+  { id: "live", label: "Live chain", blurb: "Starts on micro with live.enabled. A swap asks your wallet to sign.", yaml: LIVE_CHAIN_YAML },
   { id: "strict", label: "Strict", blurb: "The shape of haelo.example.yaml. Days, not clicks.", yaml: STRICT_YAML },
   { id: "household", label: "Household", blurb: "Equity allow-list plus wash-sale and concentration checks.", yaml: HOUSEHOLD_YAML },
 ];

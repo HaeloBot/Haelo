@@ -235,7 +235,7 @@ export default function Landing(): React.ReactElement {
           <br />
           <span className="lime">No keys.</span>
         </h2>
-        <p className="lede">The playground runs the policy evaluator, the ladder, and the audit chain in the browser. It cannot place a broker order.</p>
+        <p className="lede">The playground runs the policy evaluator on live Robinhood Chain quotes. Shadow and paper are not signed. A live rung asks your wallet to sign.</p>
         <div className="btn-row">
           <Link className="btn" to="/playground" data-magnet>
             Run a shadow session

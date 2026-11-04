@@ -36,7 +36,7 @@ export default function Security(): React.ReactElement {
         </p>
         <h2>Keys</h2>
         <p>
-          Broker credentials come from environment variables. They are not written to the policy, the audit log, or this website. The playground has no field for them. OAuth tokens prefer the OS keychain, with a <code>0600</code> file fallback. <code>live.enabled</code> defaults to false, and while it is false no code path sends a live order.
+          Broker credentials come from environment variables. They are not written to the policy, the audit log, or this website. The playground has no field for a private key. A live Robinhood Chain swap is signed by the connected wallet after the policy gate. OAuth tokens prefer the OS keychain, with a <code>0600</code> file fallback. <code>live.enabled</code> defaults to false, and while it is false no code path sends a live order.
         </p>
         <p>
           Report a vulnerability in private on the GitHub security tab. Do not open a public issue. The full note is <code>SECURITY.md</code> in the repository.

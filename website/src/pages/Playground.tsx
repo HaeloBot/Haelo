@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Meta } from "../components/Meta.js";
 import { sound } from "../audio/sound.js";
 import { impact } from "../components/Impact.js";
-import { loadMarket, type MarketBook } from "../sim/quotes.js";
 import { DEMO_YAML, PRESETS } from "../sim/presets.js";
+import { ChainOrder, persistAudit, readPersistedAudit } from "../components/ChainOrder.js";
 import { SCENARIOS } from "../sim/scenarios.js";
 import { PlaygroundSession, type SessionSnapshot, type StepResult } from "../sim/session.js";
-import type { Rung, Side } from "../../../src/types.js";
+import type { AuditEntry } from "../../../src/audit.js";
+import type { Rung } from "../../../src/types.js";
 
 const LADDER: Rung[] = ["shadow", "paper", "propose", "micro", "standard"];
 
@@ -15,17 +16,20 @@ export default function Playground(): React.ReactElement {
   const [yaml, setYaml] = useState(DEMO_YAML);
   const [error, setError] = useState<string | null>(null);
   const [snap, setSnap] = useState<SessionSnapshot | null>(null);
-  const [symbol, setSymbol] = useState("BTC-USD");
-  const [side, setSide] = useState<Side>("buy");
-  const [notional, setNotional] = useState(150);
-  const [market, setMarket] = useState<MarketBook | null>(null);
   const [tamper, setTamper] = useState<string | null>(null);
   const [last, setLast] = useState<StepResult | null>(null);
 
   const boot = (text: string): void => {
     try {
       const session = PlaygroundSession.create(text);
-      if (market) session.setQuotes(market.quotes);
+      const stored = readPersistedAudit();
+      if (stored) {
+        try {
+          session.adoptAudit(JSON.parse(stored) as AuditEntry[]);
+        } catch {
+          /* keep the fresh chain */
+        }
+      }
       sessionRef.current = session;
       setSnap(session.snapshot());
       setError(null);
@@ -39,21 +43,20 @@ export default function Playground(): React.ReactElement {
   useEffect(() => {
     try {
       const session = PlaygroundSession.create(DEMO_YAML);
+      const stored = readPersistedAudit();
+      if (stored) {
+        try {
+          session.adoptAudit(JSON.parse(stored) as AuditEntry[]);
+        } catch {
+          /* keep the fresh chain */
+        }
+      }
       sessionRef.current = session;
       setSnap(session.snapshot());
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-    const ac = new AbortController();
-    void loadMarket(ac.signal).then((book) => {
-      setMarket(book);
-      const session = sessionRef.current;
-      if (!session) return;
-      session.setQuotes(book.quotes);
-      setSnap(session.snapshot());
-    });
-    return () => ac.abort();
   }, []);
 
   const publish = (result?: StepResult): void => {
@@ -69,19 +72,11 @@ export default function Playground(): React.ReactElement {
     else sound.click();
   };
 
-  const place = (): void => {
-    const session = sessionRef.current;
-    if (!session) return;
-    publish(session.placeOrder({ symbol, side, notionalUsd: notional }));
-  };
-
-  const symbols = useMemo(() => ["BTC-USD", "ETH-USD", "SOL-USD", "AAPL"], []);
-
   return (
     <div className="pg">
       <Meta
         title="Playground: Haelo"
-        description="Run Haelo's policy engine, autonomy ladder, and hash-chained audit log in the browser. Shadow mode only. No broker keys."
+        description="Run Haelo's policy engine on live Robinhood Chain quotes. Shadow and paper are unsigned. A live rung asks your wallet to sign."
       />
       <section className="panel">
         <h2>Policy YAML</h2>
@@ -122,21 +117,8 @@ export default function Playground(): React.ReactElement {
       <section className="panel">
         <h2>Ladder</h2>
         <p className="banner">
-          This session never sends an order. Paper fills are shadow stand-ins. Live rungs stay refused. The CLI on your machine is the only path to a broker.
-          {market ? ` Prices: ${market.source}. ${market.note}` : " Loading public prices…"}
+          Shadow fills are simulated against the on-chain quote. Paper fills are the same quote and are not signed. Micro and standard ask the connected wallet to sign after the policy gate.
         </p>
-        <div className="prices" aria-live="polite">
-          {market
-            ? ["BTC-USD", "ETH-USD", "SOL-USD"].map((sym) => {
-                const q = market.quotes[sym];
-                return (
-                  <span key={sym}>
-                    {sym} {q ? q.mid.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "n/a"}
-                  </span>
-                );
-              })
-            : null}
-        </div>
         <div className="rungs" aria-label="Autonomy ladder">
           {LADDER.map((rung) => (
             <div key={rung} className={snap?.rung === rung ? "rung on" : "rung"}>
@@ -187,46 +169,14 @@ export default function Playground(): React.ReactElement {
           </>
         ) : null}
 
-        <h2 style={{ marginTop: 18 }}>Order</h2>
-        <form
-          className="ticket"
-          onSubmit={(e) => {
-            e.preventDefault();
-            place();
+        <ChainOrder
+          sessionRef={sessionRef}
+          publish={publish}
+          onAudit={() => {
+            const json = sessionRef.current?.exportAudit();
+            if (json) persistAudit(json);
           }}
-        >
-          <label>
-            Symbol
-            <select value={symbol} onChange={(e) => setSymbol(e.target.value)}>
-              {symbols.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Side
-            <select value={side} onChange={(e) => setSide(e.target.value as Side)}>
-              <option value="buy">Buy</option>
-              <option value="sell">Sell</option>
-            </select>
-          </label>
-          <label>
-            Notional USD
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={notional}
-              onChange={(e) => setNotional(Number(e.target.value))}
-            />
-          </label>
-          <label>
-            &nbsp;
-            <button className="btn" type="submit" data-magnet>
-              Place in shadow
-            </button>
-          </label>
-        </form>
+        />
 
         <h2 style={{ marginTop: 18 }}>Scenarios</h2>
         <div className="scenarios">
@@ -317,6 +267,24 @@ export default function Playground(): React.ReactElement {
             }}
           >
             Verify
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            onClick={() => {
+              const json = sessionRef.current?.exportAudit();
+              if (!json) return;
+              persistAudit(json);
+              const blob = new Blob([json], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = "haelo-audit.json";
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Export JSON
           </button>
           <button
             className="btn ghost"

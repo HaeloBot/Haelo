@@ -1,6 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider } from "wagmi";
+import { useEffect, useRef } from "react";
 import { useAppKitAccount, useAppKitState } from "@reown/appkit/react";
 import { sound } from "../audio/sound.js";
 import { initAppKit, type WalletKit } from "../wallet/appkit.js";
@@ -72,35 +70,6 @@ function WalletReady({ kit }: { kit: WalletKit }): React.ReactElement {
 }
 
 export default function WalletButton({ projectId }: { projectId: string }): React.ReactElement {
-  const [kit, setKit] = useState<WalletKit | null>(null);
-
-  useEffect(() => {
-    let cancel = false;
-    try {
-      const next = initAppKit(projectId);
-      if (!cancel) setKit(next);
-    } catch {
-      if (!cancel) setKit(null);
-    }
-    return () => {
-      cancel = true;
-    };
-  }, [projectId]);
-
-  if (!kit) {
-    return (
-      <button className="wallet" type="button" disabled aria-label="Connect wallet">
-        <span className="wallet-long">Connect wallet</span>
-        <span className="wallet-short">Connect</span>
-      </button>
-    );
-  }
-
-  return (
-    <WagmiProvider config={kit.wagmiConfig}>
-      <QueryClientProvider client={kit.queryClient}>
-        <WalletReady kit={kit} />
-      </QueryClientProvider>
-    </WagmiProvider>
-  );
+  const kit = initAppKit(projectId);
+  return <WalletReady kit={kit} />;
 }

@@ -16,7 +16,7 @@ export default function Pricing(): React.ReactElement {
         <article className="card">
           <div className="idx">Shadow</div>
           <h3>$0</h3>
-          <p>The playground in this browser, and <code>haelo serve</code> against a mock or live quotes. No account required. Nothing is sent.</p>
+          <p>The playground quotes Robinhood Chain in this browser. Shadow and paper are not signed. A live swap uses the connected wallet, and the page never asks for a private key.</p>
         </article>
         <article className="card">
           <div className="idx">Paper</div>
