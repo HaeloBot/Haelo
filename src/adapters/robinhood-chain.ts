@@ -128,7 +128,7 @@ export class RobinhoodChainBroker implements RestBroker {
     return out;
   }
 
-  async listOrders(): Promise<BrokerOrder[]> {
+  async listOrders(_mode: BrokerMode): Promise<BrokerOrder[]> {
     return [];
   }
 
@@ -199,11 +199,11 @@ export class RobinhoodChainBroker implements RestBroker {
     });
   }
 
-  async cancelOrder(): Promise<void> {
+  async cancelOrder(_mode: BrokerMode, _orderId: string): Promise<void> {
     throw new BrokerError("A Uniswap swap settles in one transaction and cannot be cancelled. Call haelo_kill_switch to stop new orders.");
   }
 
-  async cancelAll(): Promise<number> {
+  async cancelAll(_mode: BrokerMode): Promise<number> {
     return 0;
   }
 

@@ -120,7 +120,7 @@ describe("Robinhood Chain broker", () => {
     expect((await live.householdView("paper"))[0]?.isAgentAccount).toBe(true);
     expect(await live.listOrders("paper")).toEqual([]);
     expect(await live.cancelAll("paper")).toBe(0);
-    await expect(live.cancelOrder()).rejects.toThrow(/cannot be cancelled/);
+    await expect(live.cancelOrder("paper", "nope")).rejects.toThrow(/cannot be cancelled/);
     const sold = await live.placeOrder("paper", { symbol: "WETH/USDG", side: "sell", type: "market", qty: 0.01, assetClass: "crypto" });
     expect(sold.filledQty).toBeCloseTo(0.01);
     await expect(live.placeOrder("paper", { symbol: "WETH/USDG", side: "buy", type: "limit", notionalUsd: 1, assetClass: "crypto" })).rejects.toThrow(/market/);
